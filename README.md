@@ -1,0 +1,50 @@
+# Civic Bridge Proto: The Village Node
+
+An Offline-First Civic Edge Node designed to run on a Raspberry Pi without internet access.
+
+## Prerequisites
+- **Hardware**: Raspberry Pi 5 (8GB recommended) or a PC (Window/Linux).
+- **Software**: 
+    - [Ollama](https://ollama.com/) (Must be installed and running)
+    - Python 3.10+
+    - [Piper TTS](https://github.com/rhasspy/piper) (For offline voice)
+
+## Setup Steps
+
+1.  **Install Python Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+2.  **Setup Ollama**:
+    Ensure Ollama is running, then pull the required models:
+    ```bash
+    ollama pull phi3
+    ollama pull nomic-embed-text
+    ```
+
+3.  **Setup Offline Voice (Piper)**:
+    - Download the Piper binary for your OS from [Piper Releases](https://github.com/rhasspy/piper/releases).
+    - Extract and ensure `piper` (or `piper.exe`) is accessible.
+    - Download a voice model (e.g., `en_US-lessac-medium.onnx` and `.json`) and place them in the project root.
+    - Run `python setup_voice.py` to check configuration.
+
+4.  **Build Knowledge Base**:
+    - Place your PDF documents in the `local_docs/` folder.
+    - Run the ingestion script:
+      ```bash
+      python ingest_local.py
+      ```
+    - This will create a `village_db` folder containing the vector database.
+
+5.  **Run the Village Node**:
+    Start the interface:
+    ```bash
+    streamlit run server.py
+    ```
+
+## Usage
+- Open the browser link provided by Streamlit (usually `http://localhost:8501`).
+- Type your question about the uploaded documents.
+- The system will think locally and answer.
+- If configured, it will also speak the answer using Piper.

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+village_db/
+chroma_db/
+.env
+.venv
+env/
+venv/
+piper/
+response.wav
+# Ignore PDF docs, but keep the readme
+local_docs/*.pdf

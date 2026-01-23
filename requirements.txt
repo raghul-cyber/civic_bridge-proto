@@ -1,0 +1,11 @@
+langchain
+langchain-community
+langchain-chroma
+streamlit
+pypdf
+chromadb
+ollama
+# For offline TTS
+piper-tts
+# Optional but good for audio handling
+pydub
