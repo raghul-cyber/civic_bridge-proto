@@ -8,19 +8,19 @@ The Civic Bridge system follows a modular **RAG (Retrieval-Augmented Generation)
 ### High-Level Diagram
 ```mermaid
 graph TD
-    User[User / Villager] -- Voice/Text --> UI[Web Interface \n (Streamlit)]
-    UI -- Query --> API[Application Server]
+    User["User / Villager"] -- "Voice/Text" --> UI["Web Interface\n(Streamlit)"]
+    UI -- Query --> API["Application Server"]
     
     subgraph "Local Device (Offline)"
-        API -- Search --> VectorDB[(Vector Store \n ChromaDB)]
-        VectorDB -- Retrieved Context --> API
-        API -- Context + Query --> LLM[Local LLM \n (Ollama)]
+        API -- Search --> VectorDB[("Vector Store\nChromaDB")]
+        VectorDB -- "Retrieved Context" --> API
+        API -- "Context + Query" --> LLM["Local LLM\n(Ollama)"]
         LLM -- Answer --> API
         
-        API -- Answer Text --> TTS[TTS Engine]
+        API -- "Answer Text" --> TTS["TTS Engine"]
         TTS -- Audio --> UI
         
-        Admin[Administrator] -- PDF Files --> Ingest[Ingestion Script]
+        Admin["Administrator"] -- "PDF Files" --> Ingest["Ingestion Script"]
         Ingest -- Embeddings --> VectorDB
     end
 ```
