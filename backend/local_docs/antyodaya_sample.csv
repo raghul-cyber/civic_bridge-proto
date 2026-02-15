@@ -1,0 +1,6 @@
+STATE NAME,DISTRICT NAME,BLOCK NAME,GP NAME,VILLAGE NAME,Electricity Status,Water Status,Road Connectivity,Schools
+Tamil Nadu,Chennai,Anna Nagar,Shenoy Nagar,Village A,Yes,Yes,Paved,2 Primary
+Karnataka,Bangalore,Whitefield,Hoodi,Village B,Yes,No,Unpaved,1 Primary
+Andhra Pradesh,Chittoor,Tirupati,Renigunta,Village C,No,Yes,Paved,None
+Tamil Nadu,Coimbatore,Pollachi,Anamalai,Village D,Yes,Yes,Paved,1 High School
+Andhra Pradesh,Guntur,Tenali,Duggirala,Village E,Yes,No,Unpaved,1 Primary

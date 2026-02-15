@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+langchain
+langchain-community
+langchain-chroma
+chromadb
+uvicorn[standard]
+pydantic
+requests
+beautifulsoup4
+sentence-transformers
+edge-tts

@@ -1,6 +1,7 @@
-langchain
-langchain-community
+langchain==0.1.20
+langchain-community==0.0.38
 langchain-chroma
+langchain-core==0.1.52
 streamlit
 pypdf
 chromadb
@@ -8,4 +9,6 @@ ollama
 # For offline TTS
 piper-tts
 # Optional but good for audio handling
-pydub
+
+faster-whisper
+python-multipart
