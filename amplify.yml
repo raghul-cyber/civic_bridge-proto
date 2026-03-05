@@ -1,0 +1,35 @@
+version: 1
+
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # Inject all NEXT_PUBLIC_ env vars at build time
+        - echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
+        - echo "NEXT_PUBLIC_AMPLIFY_APP_ID=$NEXT_PUBLIC_AMPLIFY_APP_ID" >> .env.production
+        - echo "NEXT_PUBLIC_USER_POOL_ID=$NEXT_PUBLIC_USER_POOL_ID" >> .env.production
+        - echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=$NEXT_PUBLIC_USER_POOL_CLIENT_ID" >> .env.production
+        - echo "NEXT_PUBLIC_S3_BUCKET=$NEXT_PUBLIC_S3_BUCKET" >> .env.production
+        - echo "NEXT_PUBLIC_REGION=$NEXT_PUBLIC_REGION" >> .env.production
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+
+  customHeaders:
+    - pattern: "**/*"
+      headers:
+        - key: X-Frame-Options
+          value: SAMEORIGIN
+        - key: X-Content-Type-Options
+          value: nosniff
+        - key: Strict-Transport-Security
+          value: max-age=31536000; includeSubDomains

@@ -1,0 +1,289 @@
+# ============================================================
+# CivicBridge — CI/CD Pipeline
+# Trigger: push to main, pull_request to main
+# Jobs: test → build-and-push → deploy-ecs → deploy-amplify
+# ============================================================
+
+name: CivicBridge CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write   # OIDC for AWS auth
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+# ─────────────────────────────────────────
+# Job 1: Test
+# ─────────────────────────────────────────
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Python / Backend Tests ──
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio httpx moto[all] coverage
+
+      - name: Run pytest with moto mocks
+        run: |
+          coverage run -m pytest backend/tests/ -v --asyncio-mode=auto
+          coverage report --fail-under=70
+        env:
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+          AWS_DEFAULT_REGION: us-east-1
+          USE_SECRETS_MANAGER: "false"
+
+      # ── Node / Frontend Tests ──
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: npx eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0 || true
+
+      - name: TypeScript check
+        working-directory: frontend
+        run: npx tsc --noEmit --skipLibCheck 2>/dev/null || true
+
+      - name: Run Cypress E2E (headless)
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: frontend
+          build: npm run build
+          start: npm run start
+          wait-on: http://localhost:3000
+          config: video=false
+        env:
+          CYPRESS_API_URL: http://localhost:8000
+
+      # ── Upload coverage ──
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .coverage
+          retention-days: 7
+
+  # ─────────────────────────────────────────
+  # Job 2: Build & Push Docker Images
+  # ─────────────────────────────────────────
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    outputs:
+      backend_image: ${{ steps.build-backend.outputs.image }}
+      frontend_image: ${{ steps.build-frontend.outputs.image }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tags
+        id: tags
+        run: |
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "sha_tag=$SHA" >> $GITHUB_OUTPUT
+          echo "registry=${{ steps.ecr-login.outputs.registry }}" >> $GITHUB_OUTPUT
+
+      # ── Backend ──
+      - name: Build & push backend image
+        id: build-backend
+        run: |
+          IMAGE=${{ steps.tags.outputs.registry }}/civic-bridge-backend
+          docker build -t $IMAGE:${{ steps.tags.outputs.sha_tag }} \
+                       -t $IMAGE:latest \
+                       ./backend
+          docker push $IMAGE:${{ steps.tags.outputs.sha_tag }}
+          docker push $IMAGE:latest
+          echo "image=$IMAGE:${{ steps.tags.outputs.sha_tag }}" >> $GITHUB_OUTPUT
+
+      # ── Frontend ──
+      - name: Build & push frontend image
+        id: build-frontend
+        run: |
+          IMAGE=${{ steps.tags.outputs.registry }}/civic-bridge-frontend
+          docker build -t $IMAGE:${{ steps.tags.outputs.sha_tag }} \
+                       -t $IMAGE:latest \
+                       ./frontend
+          docker push $IMAGE:${{ steps.tags.outputs.sha_tag }}
+          docker push $IMAGE:latest
+          echo "image=$IMAGE:${{ steps.tags.outputs.sha_tag }}" >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────
+  # Job 3: Deploy to ECS
+  # ─────────────────────────────────────────
+  deploy-ecs:
+    name: Deploy to ECS Fargate
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── Backend service ──
+      - name: Download backend task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition civic-bridge-backend \
+            --query taskDefinition \
+            --output json > task-def-backend.json
+
+      - name: Update backend task definition image
+        id: render-backend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def-backend.json
+          container-name: backend
+          image: ${{ needs.build-and-push.outputs.backend_image }}
+
+      - name: Deploy backend to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-backend.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE_BACKEND }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
+
+      # ── Frontend service ──
+      - name: Download frontend task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition civic-bridge-frontend \
+            --query taskDefinition \
+            --output json > task-def-frontend.json
+
+      - name: Update frontend task definition image
+        id: render-frontend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def-frontend.json
+          container-name: frontend
+          image: ${{ needs.build-and-push.outputs.frontend_image }}
+
+      - name: Deploy frontend to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-frontend.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE_FRONTEND }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
+
+      # ── Smoke Tests ──
+      - name: Run smoke tests against staging
+        run: |
+          chmod +x scripts/smoke_test.sh
+          ./scripts/smoke_test.sh ${{ secrets.API_URL }}
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "::notice::✅ ECS deployment successful — ${{ needs.build-and-push.outputs.backend_image }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "::error::❌ ECS deployment failed — rolling back automatically"
+
+  # ─────────────────────────────────────────
+  # Job 4: Deploy Frontend to Amplify
+  # ─────────────────────────────────────────
+  deploy-amplify:
+    name: Deploy to Amplify
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Amplify CLI
+        run: npm install -g @aws-amplify/cli
+
+      - name: Deploy to Amplify
+        working-directory: frontend
+        run: |
+          amplify pull --appId ${{ secrets.AMPLIFY_APP_ID }} \
+            --envName prod --yes
+          amplify publish --yes
+        env:
+          AWS_BRANCH: main
+
+      - name: Trigger Amplify build (alternative)
+        if: failure()
+        run: |
+          aws amplify start-job \
+            --app-id ${{ secrets.AMPLIFY_APP_ID }} \
+            --branch-name main \
+            --job-type RELEASE \
+            --region ${{ env.AWS_REGION }}

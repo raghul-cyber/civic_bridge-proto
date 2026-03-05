@@ -10,11 +10,25 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.13.4",
+    "@aws-amplify/ui-react": "^6.1.1",
+    "@aws-sdk/client-dynamodb": "^3.525.0",
+    "@aws-sdk/client-polly": "^3.525.0",
+    "@aws-sdk/client-s3": "^3.525.0",
+    "@aws-sdk/client-transcribe": "^3.525.0",
+    "aws-amplify": "^6.0.17",
+    "axios": "^1.6.7",
+    "date-fns": "^3.3.1",
     "framer-motion": "^12.29.2",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.51.0",
+    "react-leaflet": "^4.2.1",
+    "react-query": "^3.39.3",
+    "react-speech-recognition": "^3.10.0",
+    "recharts": "^2.12.2",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

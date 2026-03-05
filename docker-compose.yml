@@ -1,0 +1,85 @@
+# ============================================================
+# CivicBridge — Local Development Docker Compose
+# Services: backend, frontend, dynamodb-local, localstack (S3)
+# ============================================================
+
+version: "3.9"
+
+services:
+  # ── DynamoDB Local ──
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: civic-dynamodb
+    ports:
+      - "8100:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8000 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── LocalStack (S3 mock) ──
+  localstack:
+    image: localstack/localstack:latest
+    container_name: civic-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+      - EAGER_SERVICE_LOADING=1
+    volumes:
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "http://localhost:4566/_localstack/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (FastAPI) ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civic-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - DYNAMO_ENDPOINT_URL=http://dynamodb-local:8000
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+    volumes:
+      - ./backend:/home/civicbridge/app
+    depends_on:
+      dynamodb-local:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Frontend (Next.js dev server) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: builder # Use builder stage for dev (Node, not nginx)
+    container_name: civic-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --hostname 0.0.0.0 --port 3000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  localstack_data:

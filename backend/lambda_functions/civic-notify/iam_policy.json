@@ -1,0 +1,58 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DynamoDBStreamRead",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:DescribeStream",
+                "dynamodb:ListStreams",
+                "dynamodb:Query"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_issues/stream/*",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_users",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_users/index/*"
+            ]
+        },
+        {
+            "Sid": "SESAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ses:SendEmail",
+                "ses:SendRawEmail"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "PollyAccess",
+            "Effect": "Allow",
+            "Action": [
+                "polly:SynthesizeSpeech"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "S3CacheAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:HeadObject",
+                "s3:GetObject"
+            ],
+            "Resource": "arn:aws:s3:::civic-bridge-media-842533680239/tts/cache/*"
+        },
+        {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:us-east-1:842533680239:*"
+        }
+    ]
+}

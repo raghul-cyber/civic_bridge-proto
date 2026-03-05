@@ -1,0 +1,110 @@
+{
+    "requestTemplates": {
+        "application/json": {
+            "description": "Standardizes incoming requests — adds request ID context",
+            "template": "#set($context.requestOverride.header.X-Request-ID = $context.requestId)\n$input.body"
+        }
+    },
+    "responseTemplates": {
+        "successResponse": {
+            "statusCode": "200",
+            "description": "Adds X-Request-ID header to all successful responses",
+            "responseParameters": {
+                "method.response.header.X-Request-ID": "context.requestId",
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+            },
+            "responseTemplate": "$input.body"
+        },
+        "error400": {
+            "statusCode": "400",
+            "selectionPattern": "4\\d{2}",
+            "responseParameters": {
+                "method.response.header.X-Request-ID": "context.requestId"
+            },
+            "responseTemplate": "{\"error\": $input.json('$.errorMessage'), \"code\": 400, \"request_id\": \"$context.requestId\"}"
+        },
+        "error401": {
+            "statusCode": "401",
+            "selectionPattern": "Unauthorized.*",
+            "responseParameters": {
+                "method.response.header.X-Request-ID": "context.requestId"
+            },
+            "responseTemplate": "{\"error\": \"Unauthorized — valid authentication required\", \"code\": 401, \"request_id\": \"$context.requestId\"}"
+        },
+        "error403": {
+            "statusCode": "403",
+            "selectionPattern": "Forbidden.*|Access denied.*",
+            "responseParameters": {
+                "method.response.header.X-Request-ID": "context.requestId"
+            },
+            "responseTemplate": "{\"error\": \"Forbidden — insufficient permissions\", \"code\": 403, \"request_id\": \"$context.requestId\"}"
+        },
+        "error404": {
+            "statusCode": "404",
+            "selectionPattern": "Not found.*",
+            "responseParameters": {
+                "method.response.header.X-Request-ID": "context.requestId"
+            },
+            "responseTemplate": "{\"error\": \"Resource not found\", \"code\": 404, \"request_id\": \"$context.requestId\"}"
+        },
+        "error429": {
+            "statusCode": "429",
+            "selectionPattern": "Rate exceeded.*|Too many.*",
+            "responseParameters": {
+                "method.response.header.X-Request-ID": "context.requestId",
+                "method.response.header.Retry-After": "'60'"
+            },
+            "responseTemplate": "{\"error\": \"Rate limit exceeded — retry after 60 seconds\", \"code\": 429, \"request_id\": \"$context.requestId\"}"
+        },
+        "error500": {
+            "statusCode": "500",
+            "selectionPattern": "5\\d{2}",
+            "responseParameters": {
+                "method.response.header.X-Request-ID": "context.requestId"
+            },
+            "responseTemplate": "{\"error\": \"Internal server error\", \"code\": 500, \"request_id\": \"$context.requestId\"}"
+        }
+    },
+    "gatewayResponses": {
+        "ACCESS_DENIED": {
+            "statusCode": 403,
+            "responseParameters": {
+                "gatewayresponse.header.X-Request-ID": "context.requestId",
+                "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+            },
+            "responseTemplates": {
+                "application/json": "{\"error\":\"Access denied\",\"code\":403,\"request_id\":\"$context.requestId\"}"
+            }
+        },
+        "AUTHORIZER_FAILURE": {
+            "statusCode": 401,
+            "responseTemplates": {
+                "application/json": "{\"error\":\"Authorization failed\",\"code\":401,\"request_id\":\"$context.requestId\"}"
+            }
+        },
+        "EXPIRED_TOKEN": {
+            "statusCode": 401,
+            "responseTemplates": {
+                "application/json": "{\"error\":\"Token expired — please sign in again\",\"code\":401,\"request_id\":\"$context.requestId\"}"
+            }
+        },
+        "INVALID_API_KEY": {
+            "statusCode": 403,
+            "responseTemplates": {
+                "application/json": "{\"error\":\"Invalid API key\",\"code\":403,\"request_id\":\"$context.requestId\"}"
+            }
+        },
+        "QUOTA_EXCEEDED": {
+            "statusCode": 429,
+            "responseTemplates": {
+                "application/json": "{\"error\":\"Monthly quota exceeded\",\"code\":429,\"request_id\":\"$context.requestId\"}"
+            }
+        },
+        "RESOURCE_NOT_FOUND": {
+            "statusCode": 404,
+            "responseTemplates": {
+                "application/json": "{\"error\":\"Route not found\",\"code\":404,\"request_id\":\"$context.requestId\"}"
+            }
+        }
+    }
+}

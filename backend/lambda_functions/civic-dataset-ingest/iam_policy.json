@@ -1,0 +1,44 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "S3Access",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::civic-bridge-datasets-842533680239",
+                "arn:aws:s3:::civic-bridge-datasets-842533680239/*"
+            ]
+        },
+        {
+            "Sid": "DynamoDBBatchWrite",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:DescribeTable"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_issues",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_demographics",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_budget",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_environment",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_hazards"
+            ]
+        },
+        {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:us-east-1:842533680239:*"
+        }
+    ]
+}

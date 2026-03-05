@@ -1,0 +1,42 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:PutObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::civic-bridge-datasets-842533680239",
+                "arn:aws:s3:::civic-bridge-datasets-842533680239/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DescribeTable"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_issues",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_demographics",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_budget",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_environment",
+                "arn:aws:dynamodb:us-east-1:842533680239:table/civic_hazards"
+            ]
+        }
+    ]
+}

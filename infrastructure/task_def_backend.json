@@ -1,0 +1,112 @@
+{
+    "family": "civic-bridge-backend",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "1024",
+    "memory": "2048",
+    "executionRoleArn": "arn:aws:iam::842533680239:role/CivicBridgeECSTaskRole",
+    "taskRoleArn": "arn:aws:iam::842533680239:role/CivicBridgeECSTaskRole",
+    "containerDefinitions": [
+        {
+            "name": "backend",
+            "image": "842533680239.dkr.ecr.us-east-1.amazonaws.com/civic-bridge-backend:latest",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 8000,
+                    "protocol": "tcp",
+                    "appProtocol": "http"
+                }
+            ],
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "curl -f http://localhost:8000/health || exit 1"
+                ],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3,
+                "startPeriod": 15
+            },
+            "environment": [
+                {
+                    "name": "AWS_REGION",
+                    "value": "us-east-1"
+                },
+                {
+                    "name": "DYNAMO_TABLE_ISSUES",
+                    "value": "civic_issues"
+                },
+                {
+                    "name": "DYNAMO_TABLE_USERS",
+                    "value": "civic_users"
+                },
+                {
+                    "name": "DYNAMO_TABLE_SERVICES",
+                    "value": "civic_services"
+                },
+                {
+                    "name": "DYNAMO_TABLE_DATASETS",
+                    "value": "civic_datasets"
+                },
+                {
+                    "name": "S3_BUCKET_MEDIA",
+                    "value": "civic-bridge-media-842533680239"
+                },
+                {
+                    "name": "S3_BUCKET_DATASETS",
+                    "value": "civic-bridge-datasets-842533680239"
+                },
+                {
+                    "name": "WHISPER_MODEL",
+                    "value": "base"
+                },
+                {
+                    "name": "AWS_POLLY_VOICE",
+                    "value": "Joanna"
+                },
+                {
+                    "name": "AWS_TRANSCRIBE_LANG",
+                    "value": "en-US"
+                }
+            ],
+            "secrets": [
+                {
+                    "name": "ANTHROPIC_API_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:842533680239:secret:civicbridge/anthropic-key"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/civic-bridge-backend",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "backend",
+                    "awslogs-create-group": "true"
+                }
+            },
+            "ulimits": [
+                {
+                    "name": "nofile",
+                    "softLimit": 65536,
+                    "hardLimit": 65536
+                }
+            ],
+            "linuxParameters": {
+                "tmpfs": [
+                    {
+                        "containerPath": "/tmp",
+                        "size": 256,
+                        "mountOptions": [
+                            "rw",
+                            "noexec",
+                            "nosuid"
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

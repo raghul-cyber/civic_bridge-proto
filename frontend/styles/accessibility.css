@@ -1,0 +1,126 @@
+/* ============================================================
+   accessibility.css — High-contrast mode overrides
+   Applied when <body> has the class "high-contrast".
+   ============================================================ */
+
+/* ── Global text & backgrounds ── */
+body.high-contrast {
+    background-color: #000 !important;
+    color: #fff !important;
+}
+
+body.high-contrast *:not(img):not(video):not(svg) {
+    background-color: inherit;
+    color: inherit;
+}
+
+/* ── Links ── */
+body.high-contrast a,
+body.high-contrast a:visited {
+    color: #ffff00 !important;
+    text-decoration: underline !important;
+}
+body.high-contrast a:hover,
+body.high-contrast a:focus {
+    color: #00ffff !important;
+    outline: 2px solid #00ffff;
+    outline-offset: 2px;
+}
+
+/* ── Buttons ── */
+body.high-contrast button,
+body.high-contrast [role="button"] {
+    background-color: #222 !important;
+    color: #fff !important;
+    border: 2px solid #fff !important;
+}
+body.high-contrast button:hover,
+body.high-contrast [role="button"]:hover {
+    background-color: #444 !important;
+    outline: 2px solid #ffff00;
+}
+body.high-contrast button:focus-visible,
+body.high-contrast [role="button"]:focus-visible {
+    outline: 3px solid #00ffff !important;
+    outline-offset: 2px;
+}
+
+/* ── Inputs, selects, textareas ── */
+body.high-contrast input,
+body.high-contrast select,
+body.high-contrast textarea {
+    background-color: #111 !important;
+    color: #fff !important;
+    border: 2px solid #888 !important;
+}
+body.high-contrast input:focus,
+body.high-contrast select:focus,
+body.high-contrast textarea:focus {
+    border-color: #ffff00 !important;
+    outline: 2px solid #ffff00;
+}
+body.high-contrast input::placeholder,
+body.high-contrast textarea::placeholder {
+    color: #aaa !important;
+}
+
+/* ── Cards, panels, containers ── */
+body.high-contrast div[class*="rounded"],
+body.high-contrast section,
+body.high-contrast article,
+body.high-contrast aside,
+body.high-contrast header,
+body.high-contrast footer,
+body.high-contrast nav {
+    background-color: #111 !important;
+    border-color: #555 !important;
+}
+
+/* ── Tables ── */
+body.high-contrast table {
+    border-collapse: collapse;
+}
+body.high-contrast th,
+body.high-contrast td {
+    border: 1px solid #888 !important;
+    padding: 8px;
+}
+body.high-contrast th {
+    background-color: #222 !important;
+}
+
+/* ── Status badges / chips ── */
+body.high-contrast span[class*="rounded-full"] {
+    background-color: #333 !important;
+    color: #fff !important;
+    border-color: #888 !important;
+}
+
+/* ── Shadows — remove for clarity ── */
+body.high-contrast * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+/* ── Focus outlines — make extra visible ── */
+body.high-contrast *:focus-visible {
+    outline: 3px solid #00ffff !important;
+    outline-offset: 2px;
+}
+
+/* ── Scrollbar (Webkit) ── */
+body.high-contrast ::-webkit-scrollbar {
+    width: 12px;
+}
+body.high-contrast ::-webkit-scrollbar-track {
+    background: #111;
+}
+body.high-contrast ::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 6px;
+}
+
+/* ── Images — add a visible border ── */
+body.high-contrast img {
+    border: 2px solid #888 !important;
+}

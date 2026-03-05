@@ -1,0 +1,34 @@
+{
+    "Description": "CivicBridge EC2 Security Group — HTTPS + SSH only",
+    "GroupName": "civic-bridge-sg",
+    "IngressRules": [
+        {
+            "Description": "HTTPS from anywhere",
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0"
+        },
+        {
+            "Description": "HTTP (redirect to HTTPS)",
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+        },
+        {
+            "Description": "SSH from admin IP only",
+            "IpProtocol": "tcp",
+            "FromPort": 22,
+            "ToPort": 22,
+            "CidrIp": "YOUR_IP/32"
+        }
+    ],
+    "EgressRules": [
+        {
+            "Description": "All outbound traffic",
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0"
+        }
+    ]
+}

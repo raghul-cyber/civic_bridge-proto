@@ -1,0 +1,253 @@
+{
+    "Description": "CivicBridge CloudWatch Alarms — SNS topic: civic-bridge-alerts",
+    "Alarms": [
+        {
+            "AlarmName": "civic-api-error-rate",
+            "AlarmDescription": "API Gateway 5XX error rate exceeds 5%",
+            "Namespace": "AWS/ApiGateway",
+            "MetricName": "5XXError",
+            "Dimensions": [
+                {
+                    "Name": "ApiName",
+                    "Value": "civic-bridge-api"
+                },
+                {
+                    "Name": "Stage",
+                    "Value": "prod"
+                }
+            ],
+            "Statistic": "Average",
+            "Period": 300,
+            "EvaluationPeriods": 2,
+            "Threshold": 0.05,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-api-4xx-spike",
+            "AlarmDescription": "API Gateway 4XX errors exceed 50 in 5 min",
+            "Namespace": "AWS/ApiGateway",
+            "MetricName": "4XXError",
+            "Dimensions": [
+                {
+                    "Name": "ApiName",
+                    "Value": "civic-bridge-api"
+                },
+                {
+                    "Name": "Stage",
+                    "Value": "prod"
+                }
+            ],
+            "Statistic": "Sum",
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 50,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-lambda-issues-errors",
+            "AlarmDescription": "civic-api-issues Lambda errors > 10 in 5 min",
+            "Namespace": "AWS/Lambda",
+            "MetricName": "Errors",
+            "Dimensions": [
+                {
+                    "Name": "FunctionName",
+                    "Value": "civic-api-issues"
+                }
+            ],
+            "Statistic": "Sum",
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 10,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-lambda-stt-errors",
+            "AlarmDescription": "civic-stt-process Lambda errors > 10 in 5 min",
+            "Namespace": "AWS/Lambda",
+            "MetricName": "Errors",
+            "Dimensions": [
+                {
+                    "Name": "FunctionName",
+                    "Value": "civic-stt-process"
+                }
+            ],
+            "Statistic": "Sum",
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 10,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-lambda-ingest-errors",
+            "AlarmDescription": "civic-dataset-ingest Lambda errors > 10 in 5 min",
+            "Namespace": "AWS/Lambda",
+            "MetricName": "Errors",
+            "Dimensions": [
+                {
+                    "Name": "FunctionName",
+                    "Value": "civic-dataset-ingest"
+                }
+            ],
+            "Statistic": "Sum",
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 10,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-lambda-notify-errors",
+            "AlarmDescription": "civic-notify Lambda errors > 10 in 5 min",
+            "Namespace": "AWS/Lambda",
+            "MetricName": "Errors",
+            "Dimensions": [
+                {
+                    "Name": "FunctionName",
+                    "Value": "civic-notify"
+                }
+            ],
+            "Statistic": "Sum",
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Threshold": 10,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-ec2-cpu-high",
+            "AlarmDescription": "EC2 CPU > 80% for 10 min — triggers auto-scale",
+            "Namespace": "AWS/EC2",
+            "MetricName": "CPUUtilization",
+            "Dimensions": [
+                {
+                    "Name": "InstanceId",
+                    "Value": "INSTANCE_ID_HERE"
+                }
+            ],
+            "Statistic": "Average",
+            "Period": 300,
+            "EvaluationPeriods": 2,
+            "Threshold": 80,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "breaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts",
+                "arn:aws:automate:us-east-1:ec2:recover"
+            ]
+        },
+        {
+            "AlarmName": "civic-ecs-backend-cpu-high",
+            "AlarmDescription": "ECS backend CPU > 80% for 10 min",
+            "Namespace": "AWS/ECS",
+            "MetricName": "CPUUtilization",
+            "Dimensions": [
+                {
+                    "Name": "ClusterName",
+                    "Value": "civic-bridge-cluster"
+                },
+                {
+                    "Name": "ServiceName",
+                    "Value": "civic-backend-service"
+                }
+            ],
+            "Statistic": "Average",
+            "Period": 300,
+            "EvaluationPeriods": 2,
+            "Threshold": 80,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-dynamo-throttle-issues",
+            "AlarmDescription": "DynamoDB civic_issues throttled requests > 0",
+            "Namespace": "AWS/DynamoDB",
+            "MetricName": "ThrottledRequests",
+            "Dimensions": [
+                {
+                    "Name": "TableName",
+                    "Value": "civic_issues"
+                }
+            ],
+            "Statistic": "Sum",
+            "Period": 60,
+            "EvaluationPeriods": 1,
+            "Threshold": 0,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-dynamo-throttle-users",
+            "AlarmDescription": "DynamoDB civic_users throttled requests > 0",
+            "Namespace": "AWS/DynamoDB",
+            "MetricName": "ThrottledRequests",
+            "Dimensions": [
+                {
+                    "Name": "TableName",
+                    "Value": "civic_users"
+                }
+            ],
+            "Statistic": "Sum",
+            "Period": 60,
+            "EvaluationPeriods": 1,
+            "Threshold": 0,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        },
+        {
+            "AlarmName": "civic-api-latency-p99",
+            "AlarmDescription": "API p99 latency exceeds 5 seconds",
+            "Namespace": "AWS/ApiGateway",
+            "MetricName": "Latency",
+            "Dimensions": [
+                {
+                    "Name": "ApiName",
+                    "Value": "civic-bridge-api"
+                },
+                {
+                    "Name": "Stage",
+                    "Value": "prod"
+                }
+            ],
+            "ExtendedStatistic": "p99",
+            "Period": 300,
+            "EvaluationPeriods": 3,
+            "Threshold": 5000,
+            "ComparisonOperator": "GreaterThanThreshold",
+            "TreatMissingData": "notBreaching",
+            "AlarmActions": [
+                "arn:aws:sns:us-east-1:842533680239:civic-bridge-alerts"
+            ]
+        }
+    ]
+}

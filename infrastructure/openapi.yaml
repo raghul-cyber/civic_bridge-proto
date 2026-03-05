@@ -1,0 +1,583 @@
+openapi: "3.0.1"
+info:
+  title: CivicBridge API
+  description: Civic-tech platform REST API — issues, datasets, STT, TTS, media, auth
+  version: "1.0.0"
+  contact:
+    name: CivicBridge Team
+    email: admin@civicbridge.org
+
+servers:
+  - url: https://api.civicbridge.app/prod
+    description: Production
+  - url: http://localhost:8000
+    description: Local development
+
+# ════════════════════════════════════════
+# Security Schemes
+# ════════════════════════════════════════
+components:
+  securityDefinitions:
+    CognitoAuth:
+      type: apiKey
+      name: Authorization
+      in: header
+      x-amazon-apigateway-authtype: cognito_user_pools
+      x-amazon-apigateway-authorizer:
+        type: cognito_user_pools
+        providerARNs:
+          - arn:aws:cognito-idp:us-east-1:842533680239:userpool/us-east-1_XXXXXXXXX
+
+    ApiKeyAuth:
+      type: apiKey
+      name: x-api-key
+      in: header
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+        request_id:
+          type: string
+
+    Issue:
+      type: object
+      properties:
+        issue_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [pothole, streetlight, water, sanitation, road, electricity, noise, illegal_dumping, traffic, other]
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+        ward:
+          type: string
+        location:
+          type: object
+          properties:
+            lat: { type: number }
+            lng: { type: number }
+            address: { type: string }
+        reporter_id:
+          type: string
+        reported_date:
+          type: string
+        upvotes:
+          type: integer
+        photos:
+          type: array
+          items: { type: string }
+
+    CreateIssueRequest:
+      type: object
+      required: [title, description]
+      properties:
+        title: { type: string, minLength: 3 }
+        description: { type: string, minLength: 10 }
+        category: { type: string }
+        severity: { type: string }
+        ward: { type: string }
+        location:
+          type: object
+          properties:
+            lat: { type: number }
+            lng: { type: number }
+            address: { type: string }
+        photos:
+          type: array
+          items: { type: string }
+        reporter_id: { type: string }
+
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string }
+        service: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid auth token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+# ════════════════════════════════════════
+# CORS — applied via x-amazon-apigateway-cors
+# ════════════════════════════════════════
+x-amazon-apigateway-cors:
+  allowOrigins:
+    - "https://*.amplifyapp.com"
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  allowHeaders: ["Content-Type", "Authorization", "X-Api-Key", "X-Request-ID"]
+  exposeHeaders: ["X-Request-ID"]
+  maxAge: 3600
+
+# ════════════════════════════════════════
+# Gateway Responses (standardized errors)
+# ════════════════════════════════════════
+x-amazon-apigateway-gateway-responses:
+  DEFAULT_4XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+      gatewayresponse.header.X-Request-ID: "context.requestId"
+    responseTemplates:
+      application/json: '{"error":"$context.error.messageString","code":$context.error.statusCode,"request_id":"$context.requestId"}'
+  DEFAULT_5XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+      gatewayresponse.header.X-Request-ID: "context.requestId"
+    responseTemplates:
+      application/json: '{"error":"Internal server error","code":500,"request_id":"$context.requestId"}'
+  UNAUTHORIZED:
+    statusCode: 401
+    responseTemplates:
+      application/json: '{"error":"Unauthorized — valid token required","code":401,"request_id":"$context.requestId"}'
+  THROTTLED:
+    statusCode: 429
+    responseTemplates:
+      application/json: '{"error":"Rate limit exceeded","code":429,"request_id":"$context.requestId"}'
+
+# ════════════════════════════════════════
+# Paths
+# ════════════════════════════════════════
+paths:
+
+  # ── Health ──
+  /health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+      x-amazon-apigateway-integration:
+        type: mock
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: '{"status":"ok","service":"civic-bridge-api"}'
+
+  # ── Auth (Public) ──
+  /auth/signup:
+    post:
+      summary: Register new user
+      operationId: authSignup
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email: { type: string }
+                password: { type: string }
+                name: { type: string }
+                ward: { type: string }
+      responses:
+        "201": { description: User created }
+        "400": { description: Validation error }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-auth/invocations
+
+  /auth/signin:
+    post:
+      summary: Sign in
+      operationId: authSignin
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200": { description: Auth tokens returned }
+        "401": { description: Invalid credentials }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-auth/invocations
+
+  # ── Issues ──
+  /issues:
+    get:
+      summary: List issues (filter by ward, category, status)
+      operationId: listIssues
+      tags: [issues]
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: ward
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        "200":
+          description: List of issues
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issues:
+                    type: array
+                    items: { $ref: "#/components/schemas/Issue" }
+                  count: { type: integer }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-api-issues/invocations
+
+    post:
+      summary: Create new issue
+      operationId: createIssue
+      tags: [issues]
+      security:
+        - CognitoAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateIssueRequest" }
+      responses:
+        "201":
+          description: Issue created
+        "400":
+          description: Validation error
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-api-issues/invocations
+
+  /issues/{id}:
+    get:
+      summary: Get single issue
+      operationId: getIssue
+      tags: [issues]
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Issue details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "404": { $ref: "#/components/responses/NotFound" }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-api-issues/invocations
+
+    put:
+      summary: Update issue
+      operationId: updateIssue
+      tags: [issues]
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+                description: { type: string }
+                category: { type: string }
+                severity: { type: string }
+      responses:
+        "200": { description: Issue updated }
+        "404": { $ref: "#/components/responses/NotFound" }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-api-issues/invocations
+
+    delete:
+      summary: Delete issue (admin only)
+      operationId: deleteIssue
+      tags: [issues]
+      security:
+        - CognitoAuth: []
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Issue deleted }
+        "403": { description: Admin access required }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-api-issues/invocations
+
+  /issues/{id}/upvote:
+    post:
+      summary: Upvote an issue
+      operationId: upvoteIssue
+      tags: [issues]
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Upvote registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upvotes: { type: integer }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-api-issues/invocations
+
+  # ── Services ──
+  /services:
+    get:
+      summary: List government services
+      operationId: listServices
+      tags: [services]
+      responses:
+        "200": { description: Service directory }
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-api-services/invocations
+
+  # ── Datasets (via VPC Link → EC2/ECS) ──
+  /datasets/list:
+    get:
+      summary: List available datasets
+      operationId: listDatasets
+      tags: [datasets]
+      security:
+        - CognitoAuth: []
+      responses:
+        "200": { description: Dataset listing }
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://INTERNAL_NLB_DNS:8000/datasets/files
+        connectionType: VPC_LINK
+        connectionId: VPC_LINK_ID
+
+  /datasets/{name}:
+    get:
+      summary: Get specific dataset
+      operationId: getDataset
+      tags: [datasets]
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Dataset content }
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://INTERNAL_NLB_DNS:8000/datasets/{name}
+        connectionType: VPC_LINK
+        connectionId: VPC_LINK_ID
+        requestParameters:
+          integration.request.path.name: method.request.path.name
+
+  # ── STT ──
+  /stt/transcribe:
+    post:
+      summary: Transcribe audio
+      operationId: transcribeAudio
+      tags: [stt]
+      security:
+        - CognitoAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                language:
+                  type: string
+                  default: en-US
+      responses:
+        "200":
+          description: Transcript text
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transcript: { type: string }
+                  language: { type: string }
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://INTERNAL_NLB_DNS:8000/stt/transcribe
+        connectionType: VPC_LINK
+        connectionId: VPC_LINK_ID
+
+  # ── TTS ──
+  /tts/synthesize:
+    post:
+      summary: Synthesize text to speech
+      operationId: synthesizeSpeech
+      tags: [tts]
+      security:
+        - CognitoAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+                voice_id: { type: string, default: Joanna }
+                language: { type: string, default: en-US }
+      responses:
+        "200":
+          description: Audio stream
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-tts-cache/invocations
+
+  # ── Media ──
+  /media/upload:
+    post:
+      summary: Upload issue photo (returns presigned URL)
+      operationId: uploadMedia
+      tags: [media]
+      security:
+        - CognitoAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                issue_id:
+                  type: string
+      responses:
+        "200":
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  key: { type: string }
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://INTERNAL_NLB_DNS:8000/media/upload
+        connectionType: VPC_LINK
+        connectionId: VPC_LINK_ID
+
+  # ── Export ──
+  /export:
+    get:
+      summary: Export data as CSV/PDF
+      operationId: exportData
+      tags: [export]
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: format
+          in: query
+          schema: { type: string, enum: [csv, pdf], default: csv }
+        - name: dataset
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Export file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:842533680239:function:civic-export/invocations

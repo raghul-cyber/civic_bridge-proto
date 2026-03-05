@@ -1,0 +1,753 @@
+{
+    "DashboardName": "CivicBridge-Production",
+    "DashboardBody": {
+        "widgets": [
+            {
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 1,
+                "properties": {
+                    "markdown": "# 🏛️ CivicBridge Production Dashboard\nAccount: 842533680239 | Region: us-east-1"
+                }
+            },
+            {
+                "type": "text",
+                "x": 0,
+                "y": 1,
+                "width": 24,
+                "height": 1,
+                "properties": {
+                    "markdown": "## API Gateway"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 2,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "API Request Count",
+                    "metrics": [
+                        [
+                            "AWS/ApiGateway",
+                            "Count",
+                            "ApiName",
+                            "civic-bridge-api",
+                            "Stage",
+                            "prod",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1",
+                    "period": 300
+                }
+            },
+            {
+                "type": "metric",
+                "x": 8,
+                "y": 2,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "API Errors (4XX / 5XX)",
+                    "metrics": [
+                        [
+                            "AWS/ApiGateway",
+                            "4XXError",
+                            "ApiName",
+                            "civic-bridge-api",
+                            "Stage",
+                            "prod",
+                            {
+                                "stat": "Sum",
+                                "period": 300,
+                                "color": "#ff9900"
+                            }
+                        ],
+                        [
+                            "AWS/ApiGateway",
+                            "5XXError",
+                            "ApiName",
+                            "civic-bridge-api",
+                            "Stage",
+                            "prod",
+                            {
+                                "stat": "Sum",
+                                "period": 300,
+                                "color": "#d13212"
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 16,
+                "y": 2,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "API Latency (p50 / p90 / p99)",
+                    "metrics": [
+                        [
+                            "AWS/ApiGateway",
+                            "Latency",
+                            "ApiName",
+                            "civic-bridge-api",
+                            "Stage",
+                            "prod",
+                            {
+                                "stat": "p50",
+                                "period": 300,
+                                "color": "#2ca02c"
+                            }
+                        ],
+                        [
+                            "AWS/ApiGateway",
+                            "Latency",
+                            "ApiName",
+                            "civic-bridge-api",
+                            "Stage",
+                            "prod",
+                            {
+                                "stat": "p90",
+                                "period": 300,
+                                "color": "#ff7f0e"
+                            }
+                        ],
+                        [
+                            "AWS/ApiGateway",
+                            "Latency",
+                            "ApiName",
+                            "civic-bridge-api",
+                            "Stage",
+                            "prod",
+                            {
+                                "stat": "p99",
+                                "period": 300,
+                                "color": "#d62728"
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1",
+                    "yAxis": {
+                        "left": {
+                            "label": "ms"
+                        }
+                    }
+                }
+            },
+            {
+                "type": "text",
+                "x": 0,
+                "y": 8,
+                "width": 24,
+                "height": 1,
+                "properties": {
+                    "markdown": "## Lambda Functions"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 9,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "Lambda Invocations",
+                    "metrics": [
+                        [
+                            "AWS/Lambda",
+                            "Invocations",
+                            "FunctionName",
+                            "civic-api-issues",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Invocations",
+                            "FunctionName",
+                            "civic-stt-process",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Invocations",
+                            "FunctionName",
+                            "civic-dataset-ingest",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Invocations",
+                            "FunctionName",
+                            "civic-notify",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Invocations",
+                            "FunctionName",
+                            "civic-tts-cache",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Invocations",
+                            "FunctionName",
+                            "civic-export",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 8,
+                "y": 9,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "Lambda Errors",
+                    "metrics": [
+                        [
+                            "AWS/Lambda",
+                            "Errors",
+                            "FunctionName",
+                            "civic-api-issues",
+                            {
+                                "stat": "Sum",
+                                "period": 300,
+                                "color": "#d13212"
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Errors",
+                            "FunctionName",
+                            "civic-stt-process",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Errors",
+                            "FunctionName",
+                            "civic-dataset-ingest",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Errors",
+                            "FunctionName",
+                            "civic-notify",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Errors",
+                            "FunctionName",
+                            "civic-tts-cache",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Errors",
+                            "FunctionName",
+                            "civic-export",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 16,
+                "y": 9,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "Lambda Duration (p90)",
+                    "metrics": [
+                        [
+                            "AWS/Lambda",
+                            "Duration",
+                            "FunctionName",
+                            "civic-api-issues",
+                            {
+                                "stat": "p90",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Duration",
+                            "FunctionName",
+                            "civic-stt-process",
+                            {
+                                "stat": "p90",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Duration",
+                            "FunctionName",
+                            "civic-dataset-ingest",
+                            {
+                                "stat": "p90",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/Lambda",
+                            "Duration",
+                            "FunctionName",
+                            "civic-notify",
+                            {
+                                "stat": "p90",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1",
+                    "yAxis": {
+                        "left": {
+                            "label": "ms"
+                        }
+                    }
+                }
+            },
+            {
+                "type": "text",
+                "x": 0,
+                "y": 15,
+                "width": 24,
+                "height": 1,
+                "properties": {
+                    "markdown": "## DynamoDB"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 16,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "DynamoDB Read Capacity",
+                    "metrics": [
+                        [
+                            "AWS/DynamoDB",
+                            "ConsumedReadCapacityUnits",
+                            "TableName",
+                            "civic_issues",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/DynamoDB",
+                            "ConsumedReadCapacityUnits",
+                            "TableName",
+                            "civic_users",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/DynamoDB",
+                            "ConsumedReadCapacityUnits",
+                            "TableName",
+                            "civic_demographics",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/DynamoDB",
+                            "ConsumedReadCapacityUnits",
+                            "TableName",
+                            "civic_budget",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 8,
+                "y": 16,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "DynamoDB Write Capacity",
+                    "metrics": [
+                        [
+                            "AWS/DynamoDB",
+                            "ConsumedWriteCapacityUnits",
+                            "TableName",
+                            "civic_issues",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/DynamoDB",
+                            "ConsumedWriteCapacityUnits",
+                            "TableName",
+                            "civic_users",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/DynamoDB",
+                            "ConsumedWriteCapacityUnits",
+                            "TableName",
+                            "civic_datasets",
+                            {
+                                "stat": "Sum",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 16,
+                "y": 16,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "DynamoDB Throttled Requests",
+                    "metrics": [
+                        [
+                            "AWS/DynamoDB",
+                            "ThrottledRequests",
+                            "TableName",
+                            "civic_issues",
+                            {
+                                "stat": "Sum",
+                                "period": 60,
+                                "color": "#d13212"
+                            }
+                        ],
+                        [
+                            "AWS/DynamoDB",
+                            "ThrottledRequests",
+                            "TableName",
+                            "civic_users",
+                            {
+                                "stat": "Sum",
+                                "period": 60
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "text",
+                "x": 0,
+                "y": 22,
+                "width": 24,
+                "height": 1,
+                "properties": {
+                    "markdown": "## S3 Storage"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 23,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                    "title": "S3 Bucket Size (GB)",
+                    "metrics": [
+                        [
+                            "AWS/S3",
+                            "BucketSizeBytes",
+                            "BucketName",
+                            "civic-bridge-media-842533680239",
+                            "StorageType",
+                            "StandardStorage",
+                            {
+                                "stat": "Average",
+                                "period": 86400
+                            }
+                        ],
+                        [
+                            "AWS/S3",
+                            "BucketSizeBytes",
+                            "BucketName",
+                            "civic-bridge-datasets-842533680239",
+                            "StorageType",
+                            "StandardStorage",
+                            {
+                                "stat": "Average",
+                                "period": 86400
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 12,
+                "y": 23,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                    "title": "S3 Object Count",
+                    "metrics": [
+                        [
+                            "AWS/S3",
+                            "NumberOfObjects",
+                            "BucketName",
+                            "civic-bridge-media-842533680239",
+                            "StorageType",
+                            "AllStorageTypes",
+                            {
+                                "stat": "Average",
+                                "period": 86400
+                            }
+                        ],
+                        [
+                            "AWS/S3",
+                            "NumberOfObjects",
+                            "BucketName",
+                            "civic-bridge-datasets-842533680239",
+                            "StorageType",
+                            "AllStorageTypes",
+                            {
+                                "stat": "Average",
+                                "period": 86400
+                            }
+                        ]
+                    ],
+                    "view": "singleValue",
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "text",
+                "x": 0,
+                "y": 29,
+                "width": 24,
+                "height": 1,
+                "properties": {
+                    "markdown": "## EC2 / ECS Compute"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 30,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "ECS CPU Utilization",
+                    "metrics": [
+                        [
+                            "AWS/ECS",
+                            "CPUUtilization",
+                            "ClusterName",
+                            "civic-bridge-cluster",
+                            "ServiceName",
+                            "civic-backend-service",
+                            {
+                                "stat": "Average",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/ECS",
+                            "CPUUtilization",
+                            "ClusterName",
+                            "civic-bridge-cluster",
+                            "ServiceName",
+                            "civic-frontend-service",
+                            {
+                                "stat": "Average",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1",
+                    "yAxis": {
+                        "left": {
+                            "min": 0,
+                            "max": 100,
+                            "label": "%"
+                        }
+                    },
+                    "annotations": {
+                        "horizontal": [
+                            {
+                                "label": "Scale-out threshold",
+                                "value": 70,
+                                "color": "#ff9900"
+                            },
+                            {
+                                "label": "Alarm threshold",
+                                "value": 80,
+                                "color": "#d13212"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "type": "metric",
+                "x": 8,
+                "y": 30,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "ECS Memory Utilization",
+                    "metrics": [
+                        [
+                            "AWS/ECS",
+                            "MemoryUtilization",
+                            "ClusterName",
+                            "civic-bridge-cluster",
+                            "ServiceName",
+                            "civic-backend-service",
+                            {
+                                "stat": "Average",
+                                "period": 300
+                            }
+                        ],
+                        [
+                            "AWS/ECS",
+                            "MemoryUtilization",
+                            "ClusterName",
+                            "civic-bridge-cluster",
+                            "ServiceName",
+                            "civic-frontend-service",
+                            {
+                                "stat": "Average",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1",
+                    "yAxis": {
+                        "left": {
+                            "min": 0,
+                            "max": 100,
+                            "label": "%"
+                        }
+                    }
+                }
+            },
+            {
+                "type": "metric",
+                "x": 16,
+                "y": 30,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                    "title": "EC2 CPU Utilization",
+                    "metrics": [
+                        [
+                            "AWS/EC2",
+                            "CPUUtilization",
+                            "InstanceId",
+                            "INSTANCE_ID_HERE",
+                            {
+                                "stat": "Average",
+                                "period": 300
+                            }
+                        ]
+                    ],
+                    "view": "timeSeries",
+                    "region": "us-east-1",
+                    "yAxis": {
+                        "left": {
+                            "min": 0,
+                            "max": 100,
+                            "label": "%"
+                        }
+                    },
+                    "annotations": {
+                        "horizontal": [
+                            {
+                                "label": "Alarm",
+                                "value": 80,
+                                "color": "#d13212"
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+}
