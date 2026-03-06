@@ -3,7 +3,10 @@ import time
 import uuid
 import logging
 import functools
-import whisper
+try:
+    import whisper
+except ImportError:
+    whisper = None
 import requests
 from dotenv import load_dotenv
 from services.aws_service import get_boto3_client
@@ -113,6 +116,8 @@ class STTService:
 
     def transcribe_with_whisper(self, audio_path: str, model_size: str = "base") -> str:
         """Transcribes an audio file locally using OpenAI's Whisper model."""
+        if whisper is None:
+            raise RuntimeError("openai-whisper is not installed. Install it with: pip install openai-whisper")
         try:
             model = self._load_whisper_model(model_size)
             result = model.transcribe(audio_path)
