@@ -1,5 +1,5 @@
+import os
 import pytest
-import boto3
 from moto import mock_aws
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -7,71 +7,15 @@ from fastapi.testclient import TestClient
 from services.dynamo_service import DynamoService
 from api.issues_router import router
 
-# ═══════════════════════════════════════════════════════════════
-# Fixtures
-# ═══════════════════════════════════════════════════════════════
-
-TABLE_NAME = "civic_issues"
+def get_table_name():
+    return os.environ.get('DYNAMO_TABLE_ISSUES', 'test_civic_issues')
 
 @pytest.fixture
-def aws_env(monkeypatch):
-    """Set dummy AWS creds for moto."""
-    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
-    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
-    monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
-    monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
-    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    monkeypatch.setenv("AWS_REGION", "us-east-1")
-
-
-@pytest.fixture
-def dynamo_table(aws_env):
-    """Create a mocked civic_issues table."""
-    with mock_aws():
-        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-        dynamodb.create_table(
-            TableName=TABLE_NAME,
-            KeySchema=[
-                {"AttributeName": "issue_id", "KeyType": "HASH"},
-                {"AttributeName": "reported_date", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "issue_id", "AttributeType": "S"},
-                {"AttributeName": "reported_date", "AttributeType": "S"},
-                {"AttributeName": "ward", "AttributeType": "S"},
-                {"AttributeName": "status", "AttributeType": "S"},
-                {"AttributeName": "category", "AttributeType": "S"},
-            ],
-            BillingMode="PAY_PER_REQUEST",
-            GlobalSecondaryIndexes=[
-                {
-                    "IndexName": "ward-status-index",
-                    "KeySchema": [
-                        {"AttributeName": "ward", "KeyType": "HASH"},
-                        {"AttributeName": "status", "KeyType": "RANGE"},
-                    ],
-                    "Projection": {"ProjectionType": "ALL"},
-                },
-                {
-                    "IndexName": "category-date-index",
-                    "KeySchema": [
-                        {"AttributeName": "category", "KeyType": "HASH"},
-                        {"AttributeName": "reported_date", "KeyType": "RANGE"},
-                    ],
-                    "Projection": {"ProjectionType": "ALL"},
-                },
-            ],
-        )
-        yield dynamodb
-
-
-@pytest.fixture
-def service(dynamo_table):
+def service(dynamo_tables):
     """Return a DynamoService wired to the mocked table."""
     svc = DynamoService()
-    svc.dynamodb = dynamo_table
+    svc.dynamodb = dynamo_tables
     return svc
-
 
 @pytest.fixture
 def sample_issue():
@@ -90,18 +34,18 @@ def sample_issue():
         "upvotes": 0,
     }
 
-
 # ═══════════════════════════════════════════════════════════════
 # DynamoService Unit Tests
 # ═══════════════════════════════════════════════════════════════
 
 class TestDynamoServicePutGet:
     def test_put_and_get_item(self, service, sample_issue):
-        result = service.put_item(TABLE_NAME, sample_issue)
+        table_name = get_table_name()
+        result = service.put_item(table_name, sample_issue)
         assert result is True
 
         item = service.get_item(
-            TABLE_NAME,
+            table_name,
             pk={"issue_id": "ISS-TEST001"},
             sk={"reported_date": "2024-06-15T10:30:00"},
         )
@@ -109,19 +53,20 @@ class TestDynamoServicePutGet:
         assert item["title"] == "Broken streetlight"
 
     def test_get_nonexistent_item(self, service):
+        table_name = get_table_name()
         item = service.get_item(
-            TABLE_NAME,
+            table_name,
             pk={"issue_id": "NOPE"},
             sk={"reported_date": "2024-01-01"},
         )
         assert item is None
 
-
 class TestDynamoServiceUpdate:
     def test_update_item(self, service, sample_issue):
-        service.put_item(TABLE_NAME, sample_issue)
+        table_name = get_table_name()
+        service.put_item(table_name, sample_issue)
         result = service.update_item(
-            TABLE_NAME,
+            table_name,
             pk={"issue_id": "ISS-TEST001"},
             sk={"reported_date": "2024-06-15T10:30:00"},
             updates={"status": "in_progress", "severity": "critical"},
@@ -129,61 +74,64 @@ class TestDynamoServiceUpdate:
         assert result is True
 
         item = service.get_item(
-            TABLE_NAME,
+            table_name,
             pk={"issue_id": "ISS-TEST001"},
             sk={"reported_date": "2024-06-15T10:30:00"},
         )
         assert item["status"] == "in_progress"
         assert item["severity"] == "critical"
 
-
 class TestDynamoServiceDelete:
     def test_delete_item(self, service, sample_issue):
-        service.put_item(TABLE_NAME, sample_issue)
+        table_name = get_table_name()
+        service.put_item(table_name, sample_issue)
         result = service.delete_item(
-            TABLE_NAME,
+            table_name,
             pk={"issue_id": "ISS-TEST001"},
             sk={"reported_date": "2024-06-15T10:30:00"},
         )
         assert result is True
 
         item = service.get_item(
-            TABLE_NAME,
+            table_name,
             pk={"issue_id": "ISS-TEST001"},
             sk={"reported_date": "2024-06-15T10:30:00"},
         )
         assert item is None
 
-
 class TestDynamoServiceQuery:
     def test_query_by_pk(self, service, sample_issue):
-        service.put_item(TABLE_NAME, sample_issue)
-        items = service.query_by_pk(TABLE_NAME, "issue_id", "ISS-TEST001")
+        table_name = get_table_name()
+        service.put_item(table_name, sample_issue)
+        items = service.query_by_pk(table_name, "issue_id", "ISS-TEST001")
         assert len(items) == 1
         assert items[0]["issue_id"] == "ISS-TEST001"
 
     def test_query_by_pk_no_results(self, service):
-        items = service.query_by_pk(TABLE_NAME, "issue_id", "NOPE")
+        table_name = get_table_name()
+        items = service.query_by_pk(table_name, "issue_id", "NOPE")
         assert items == []
 
     def test_query_by_gsi(self, service, sample_issue):
-        service.put_item(TABLE_NAME, sample_issue)
+        table_name = get_table_name()
+        service.put_item(table_name, sample_issue)
         items = service.query_by_gsi(
-            TABLE_NAME, "ward-status-index", "ward", "ward-5"
+            table_name, "ward-status-index", "ward", "ward-5"
         )
         assert len(items) >= 1
         assert items[0]["ward"] == "ward-5"
 
     def test_query_by_category_gsi(self, service, sample_issue):
-        service.put_item(TABLE_NAME, sample_issue)
+        table_name = get_table_name()
+        service.put_item(table_name, sample_issue)
         items = service.query_by_gsi(
-            TABLE_NAME, "category-date-index", "category", "streetlight"
+            table_name, "category-date-index", "category", "streetlight"
         )
         assert len(items) >= 1
 
-
 class TestDynamoServiceBatchAndScan:
     def test_batch_write(self, service):
+        table_name = get_table_name()
         items = [
             {
                 "issue_id": f"ISS-BATCH{i}",
@@ -196,29 +144,33 @@ class TestDynamoServiceBatchAndScan:
             }
             for i in range(1, 6)
         ]
-        count = service.batch_write(TABLE_NAME, items)
+        count = service.batch_write(table_name, items)
         assert count == 5
 
     def test_scan_table(self, service, sample_issue):
-        service.put_item(TABLE_NAME, sample_issue)
-        items = service.scan_table(TABLE_NAME, limit=100)
+        table_name = get_table_name()
+        service.put_item(table_name, sample_issue)
+        items = service.scan_table(table_name, limit=100)
         assert len(items) >= 1
-
 
 # ═══════════════════════════════════════════════════════════════
 # Issues Router Integration Tests
 # ═══════════════════════════════════════════════════════════════
 
 @pytest.fixture
-def client(dynamo_table):
+def client(dynamo_tables):
     """FastAPI test client with mocked DynamoDB."""
     from services import dynamo_service as ds_module
-    ds_module.dynamo_service.dynamodb = dynamo_table
+    import api.issues_router as router_module
+    
+    # Needs a mock DynamoService assigned down to the singleton
+    ds_module.dynamo_service.dynamodb = dynamo_tables
+    ds_module.dynamo_service.table_name = get_table_name()
+    router_module.TABLE = get_table_name()
 
     app = FastAPI()
     app.include_router(router)
     return TestClient(app)
-
 
 class TestIssuesRouter:
     def test_create_issue(self, client):
@@ -234,7 +186,6 @@ class TestIssuesRouter:
         assert data["issue"]["status"] == "open"
 
     def test_get_issue(self, client):
-        # Create first
         create_res = client.post("/issues", json={
             "title": "Test Issue",
             "description": "Test",

@@ -16,6 +16,11 @@ import boto3
 from moto import mock_aws
 from httpx import AsyncClient, ASGITransport
 
+pytestmark = pytest.mark.skipif(
+    os.environ.get('RUN_INTEGRATION_TESTS') != 'true',
+    reason='Integration tests skipped in CI. Set RUN_INTEGRATION_TESTS=true to run.'
+)
+
 # ── Fixtures ──
 
 REGION = "us-east-1"
