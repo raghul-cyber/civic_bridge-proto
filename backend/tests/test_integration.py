@@ -149,7 +149,7 @@ def app(setup_aws):
     s3_svc.client = setup_aws["s3"]
     s3_module.s3_service = s3_svc
 
-    from backend.main import app as fastapi_app
+    from main import app as fastapi_app
     return fastapi_app
 
 

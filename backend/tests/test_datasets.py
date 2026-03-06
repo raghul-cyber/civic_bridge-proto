@@ -102,7 +102,7 @@ def test_upload_to_s3(mock_s3_client):
 def test_scheduler_process_dataset(mock_fetch, mock_upload):
     mock_fetch.return_value = pd.DataFrame([{"sr_number": "1", "sr_type": "A"}])
     scheduler = DatasetScheduler()
-    res = scheduler.process_dataset("chicago_311", fetch_chicago_311, validate_chicago_311)
+    res = scheduler.process_dataset("chicago_311", mock_fetch, validate_chicago_311)
     
     assert res["status"] == "ok"
     assert res["rows"] == 1
