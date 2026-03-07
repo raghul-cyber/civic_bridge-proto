@@ -16,24 +16,20 @@ RUN npm ci --prefer-offline
 # Copy source and build
 COPY . .
 
-# Next.js static export
+# Build frontend application
 RUN npm run build
-# For Next.js 13+, static export is configured in next.config.js (output: 'export')
-# Fallback: if 'next export' is needed
-RUN if [ -d "out" ]; then echo "Static export exists"; else npx next export 2>/dev/null || true; fi
-
 
 # ── Stage 2: Serve ──
 FROM nginx:1.25-alpine AS production
 
 LABEL maintainer="CivicBridge <admin@civicbridge.org>"
-LABEL description="CivicBridge frontend — static Next.js site"
+LABEL description="CivicBridge frontend — static site"
 
 # Remove default nginx content
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built static files
-COPY --from=builder /app/out /usr/share/nginx/html
+# Copy built static files (Vite builds to /dist)
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

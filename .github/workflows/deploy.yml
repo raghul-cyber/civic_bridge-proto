@@ -327,30 +327,36 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Amplify CLI
-        run: npm install -g @aws-amplify/cli
-
-      - name: Deploy to Amplify
-        working-directory: frontend
+      - name: Deploy to Amplify via AWS CLI
         run: |
-          amplify pull --appId ${{ secrets.AMPLIFY_APP_ID }} \
-            --envName prod --yes
-          amplify publish --yes
-        env:
-          AWS_BRANCH: main
-
-      - name: Trigger Amplify build (fallback)
-        if: failure()
-        run: |
-          aws amplify start-job \
+          JOB_ID=$(aws amplify start-job \
             --app-id ${{ secrets.AMPLIFY_APP_ID }} \
             --branch-name main \
             --job-type RELEASE \
-            --region ${{ env.AWS_REGION }}
+            --region ${{ env.AWS_REGION }} \
+            --query 'jobSummary.jobId' \
+            --output text)
+          
+          echo "Started Amplify release job: $JOB_ID"
+          
+          while true; do
+            STATUS=$(aws amplify get-job \
+              --app-id ${{ secrets.AMPLIFY_APP_ID }} \
+              --branch-name main \
+              --job-id $JOB_ID \
+              --region ${{ env.AWS_REGION }} \
+              --query 'job.summary.status' \
+              --output text)
+            
+            echo "Current status: $STATUS"
+            
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify deployment successful!"
+              break
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Amplify deployment failed with status: $STATUS"
+              exit 1
+            fi
+            
+            sleep 10
+          done
