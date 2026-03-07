@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+RUN pip install --upgrade pip "setuptools<70" wheel
+RUN pip install --no-cache-dir --prefix=/install openai-whisper==20231117 --no-build-isolation
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 
@@ -49,7 +51,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 EXPOSE 8000
 
 CMD ["uvicorn", "backend.main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--workers", "2", \
-     "--log-level", "info"]
+    "--host", "0.0.0.0", \
+    "--port", "8000", \
+    "--workers", "2", \
+    "--log-level", "info"]
