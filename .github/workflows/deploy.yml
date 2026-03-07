@@ -328,25 +328,15 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy to Amplify via AWS CLI
+        env:
+          AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
         run: |
-          JOB_ID=$(aws amplify start-job \
-            --app-id ${{ secrets.AMPLIFY_APP_ID }} \
-            --branch-name main \
-            --job-type RELEASE \
-            --region ${{ env.AWS_REGION }} \
-            --query 'jobSummary.jobId' \
-            --output text)
+          JOB_ID=$(aws amplify start-job --app-id "$AMPLIFY_APP_ID" --branch-name "main" --job-type "RELEASE" --region "${{ env.AWS_REGION }}" --query 'jobSummary.jobId' --output text)
           
           echo "Started Amplify release job: $JOB_ID"
           
           while true; do
-            STATUS=$(aws amplify get-job \
-              --app-id ${{ secrets.AMPLIFY_APP_ID }} \
-              --branch-name main \
-              --job-id $JOB_ID \
-              --region ${{ env.AWS_REGION }} \
-              --query 'job.summary.status' \
-              --output text)
+            STATUS=$(aws amplify get-job --app-id "$AMPLIFY_APP_ID" --branch-name "main" --job-id "$JOB_ID" --region "${{ env.AWS_REGION }}" --query 'job.summary.status' --output text)
             
             echo "Current status: $STATUS"
             
