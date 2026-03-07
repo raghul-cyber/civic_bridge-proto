@@ -4,25 +4,25 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - cd frontend && npm ci
     build:
       commands:
-        # Inject all NEXT_PUBLIC_ env vars at build time
-        - echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
-        - echo "NEXT_PUBLIC_AMPLIFY_APP_ID=$NEXT_PUBLIC_AMPLIFY_APP_ID" >> .env.production
-        - echo "NEXT_PUBLIC_USER_POOL_ID=$NEXT_PUBLIC_USER_POOL_ID" >> .env.production
-        - echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=$NEXT_PUBLIC_USER_POOL_CLIENT_ID" >> .env.production
-        - echo "NEXT_PUBLIC_S3_BUCKET=$NEXT_PUBLIC_S3_BUCKET" >> .env.production
-        - echo "NEXT_PUBLIC_REGION=$NEXT_PUBLIC_REGION" >> .env.production
+        # Inject all NEXT_PUBLIC_ env vars at build time (Vite uses VITE_ prefix but leaving these just in case)
+        - cd frontend
+        - echo "VITE_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
+        - echo "VITE_AMPLIFY_APP_ID=$NEXT_PUBLIC_AMPLIFY_APP_ID" >> .env.production
+        - echo "VITE_USER_POOL_ID=$NEXT_PUBLIC_USER_POOL_ID" >> .env.production
+        - echo "VITE_USER_POOL_CLIENT_ID=$NEXT_PUBLIC_USER_POOL_CLIENT_ID" >> .env.production
+        - echo "VITE_S3_BUCKET=$NEXT_PUBLIC_S3_BUCKET" >> .env.production
+        - echo "VITE_REGION=$NEXT_PUBLIC_REGION" >> .env.production
         - npm run build
   artifacts:
-    baseDirectory: .next
+    baseDirectory: frontend/dist
     files:
       - "**/*"
   cache:
     paths:
-      - node_modules/**/*
-      - .next/cache/**/*
+      - frontend/node_modules/**/*
 
   customHeaders:
     - pattern: "**/*"
