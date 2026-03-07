@@ -45,7 +45,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install --upgrade pip
+          pip install --upgrade pip setuptools wheel
           pip install -r backend/requirements.txt
           pip install pytest pytest-asyncio httpx moto[all] coverage
 
