@@ -329,16 +329,18 @@ jobs:
         env:
           APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
         run: |
-          JOB_ID=$(aws amplify start-job --app-id "$APP_ID" --branch-name "main" --job-type "RELEASE" --query 'jobSummary.jobId' --output text)
+          CLEAN_APP_ID=$(echo "$APP_ID" | tr -d '\n\r ')
+          JOB_ID=$(aws amplify start-job --app-id "$CLEAN_APP_ID" --branch-name "main" --job-type "RELEASE" --query 'jobSummary.jobId' --output text)
           echo "Amplify job started: $JOB_ID"
-          echo "View at: https://console.aws.amazon.com/amplify/home#/$APP_ID/main/$JOB_ID"
+          echo "View at: https://console.aws.amazon.com/amplify/home#/$CLEAN_APP_ID/main/$JOB_ID"
       - name: Wait for Amplify deployment
         env:
           APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
         run: |
+          CLEAN_APP_ID=$(echo "$APP_ID" | tr -d '\n\r ')
           echo 'Polling Amplify build status every 30s (max 10 minutes)...'
           for i in $(seq 1 20); do
-          STATUS=$(aws amplify list-jobs --app-id "$APP_ID" --branch-name "main" --max-results 1 --query 'jobSummaries[0].status' --output text)
+          STATUS=$(aws amplify list-jobs --app-id "$CLEAN_APP_ID" --branch-name "main" --max-results 1 --query 'jobSummaries[0].status' --output text)
           echo "Attempt $i/20: $STATUS"
           if [ "$STATUS" = "SUCCEED" ]; then echo 'Deployment succeeded!' && exit 0; fi
           if [ "$STATUS" = "FAILED" ]; then echo 'Deployment FAILED!' && exit 1; fi
