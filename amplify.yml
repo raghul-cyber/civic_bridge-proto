@@ -4,11 +4,13 @@ frontend:
   phases:
     preBuild:
       commands:
-        - cd frontend && npm ci
+        # Amplify executes phases as a single contiguous bash script.
+        # Changing directory once here sets the PWD for the entire build.
+        - cd frontend
+        - npm ci
     build:
       commands:
         # Inject all NEXT_PUBLIC_ env vars at build time (Vite uses VITE_ prefix but leaving these just in case)
-        - cd frontend
         - echo "VITE_API_URL=$NEXT_PUBLIC_API_URL" >> .env.production
         - echo "VITE_AMPLIFY_APP_ID=$NEXT_PUBLIC_AMPLIFY_APP_ID" >> .env.production
         - echo "VITE_USER_POOL_ID=$NEXT_PUBLIC_USER_POOL_ID" >> .env.production
