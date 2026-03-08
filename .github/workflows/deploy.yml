@@ -271,7 +271,7 @@ jobs:
       - name: Notify deployment success
         if: success()
         run: |
-          echo "::notice::✅ ECS deployment successful — ${{ needs.build-and-push.outputs.backend_image }}"
+          echo "::notice::✅ ECS deployment successful — ${{ needs.build-and-push.outputs.image-tag }}"
 
       - name: Notify deployment failure
         if: failure()
