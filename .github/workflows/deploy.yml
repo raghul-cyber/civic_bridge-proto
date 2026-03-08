@@ -196,19 +196,7 @@ jobs:
           build-args: |
             BUILDKIT_INLINE_CACHE=1
 
-      - name: Build and push FRONTEND image with cache
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/civic-bridge-frontend:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/civic-bridge-frontend:latest
-          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/civic-bridge-frontend:cache
-          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/civic-bridge-frontend:cache,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
+
 
       - name: Output the image tag for downstream jobs
         id: set-output
@@ -232,6 +220,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+
+
+
+
+        
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -264,30 +258,7 @@ jobs:
           wait-for-service-stability: true
           wait-for-minutes: 10
 
-      # ── Frontend service ──
-      - name: Download frontend task definition
-        run: |
-          aws ecs describe-task-definition \
-            --task-definition civic-bridge-frontend \
-            --query taskDefinition \
-            --output json > task-def-frontend.json
 
-      - name: Update frontend task definition image
-        id: render-frontend
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-def-frontend.json
-          container-name: frontend
-          image: ${{ needs.build-and-push.outputs.registry }}/civic-bridge-frontend:${{ needs.build-and-push.outputs.image-tag }}
-
-      - name: Deploy frontend to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.render-frontend.outputs.task-definition }}
-          service: ${{ secrets.ECS_SERVICE_FRONTEND }}
-          cluster: ${{ secrets.ECS_CLUSTER }}
-          wait-for-service-stability: true
-          wait-for-minutes: 10
 
       # ── Smoke Test ──
       - name: Run smoke test
