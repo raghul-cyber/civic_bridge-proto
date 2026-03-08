@@ -35,3 +35,8 @@ frontend:
           value: nosniff
         - key: Strict-Transport-Security
           value: max-age=31536000; includeSubDomains
+
+  customRules:
+    - source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|ttf|map|json|webp|avif)$)([^.]+$)/>'
+      status: '200'
+      target: '/index.html'
