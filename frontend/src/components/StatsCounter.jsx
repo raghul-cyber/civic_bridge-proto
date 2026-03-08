@@ -25,15 +25,15 @@ const StatsCounter = ({ value, label, prefix = '', suffix = '', duration = 2, cl
     });
 
     return (
-        <div ref={ref} className={className}>
-            <div className="text-4xl md:text-5xl font-display font-bold text-[var(--accent-cyan)] mb-2 flex items-baseline">
-                {prefix && <span className="text-2xl mr-1 text-[var(--accent-cyan)]/60">{prefix}</span>}
-                <motion.span>{displayValue}</motion.span>
-                {suffix && <span className="text-2xl ml-1 text-[var(--accent-cyan)]/60">{suffix}</span>}
+        <div ref={ref} className={className || 'flex flex-col items-center justify-center text-center'}>
+            <div className="flex items-center justify-center text-center">
+                {prefix && <span className="text-2xl mr-1 text-[#00D4FF]">{prefix}</span>}
+                <motion.span className="text-[#00D4FF] font-display font-bold text-5xl md:text-6xl">{displayValue}</motion.span>
+                {suffix && <span className="text-[#00D4FF] font-display font-bold text-5xl md:text-6xl ml-1">{suffix}</span>}
             </div>
-            <p className="text-sm font-medium text-[var(--text-secondary)] tracking-wide uppercase">
+            <span className="text-[#9CA3AF] text-xs tracking-[0.15em] uppercase mt-2">
                 {label}
-            </p>
+            </span>
         </div>
     );
 };
