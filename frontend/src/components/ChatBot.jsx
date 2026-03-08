@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, User, Send, Keyboard, Cloud, Leaf, Flag, Coins, Users, AlertCircle, Volume2, Square } from 'lucide-react';
+import { Bot, User, Send, Keyboard, Cloud, Leaf, Flag, Coins, Users, AlertCircle, Volume2, Square, Mic, Loader2 } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
+import useVoice from '../hooks/useVoice';
 
 const initialWelcomeMessage = {
     role: 'bot',
@@ -18,34 +20,50 @@ const ChatBot = () => {
     const { language, setLanguage } = useLanguage();
     const messagesEndRef = useRef(null);
 
+    const { isListening, error: voiceError, isSupported: isVoiceSupported, startListening, stopListening } = useVoice({
+        language: language.code,
+        onTranscript: (transcript) => {
+            if (transcript && transcript.trim()) {
+                setInputText(transcript);
+                sendMessage(transcript);
+            }
+        }
+    });
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isSpeaking]);
+    }, [messages, isSpeaking, voiceError]);
 
     const speakText = (text, langCode) => {
-        if (!window.speechSynthesis) return;
+        const speakWhenReady = (text, langCode) => {
+            if (!window.speechSynthesis) return;
 
-        // Cancel any current speech
-        window.speechSynthesis.cancel();
+            window.speechSynthesis.cancel();
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = langCode || 'en-US';
-        utterance.rate = 0.9;  // slightly slower for clarity
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
+            const trySpeak = () => {
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    const lang = langCode || 'en-US';
+                    utterance.lang = lang;
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
 
-        // Try to find a specific voice for the language
-        const voices = window.speechSynthesis.getVoices();
-        const matchVoice = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
-        if (matchVoice) {
-            utterance.voice = matchVoice;
-        }
+                    const voice = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+                    if (voice) utterance.voice = voice;
 
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
+                    utterance.onstart = () => setIsSpeaking(true);
+                    utterance.onend = () => setIsSpeaking(false);
+                    utterance.onerror = () => setIsSpeaking(false);
 
-        window.speechSynthesis.speak(utterance);
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    window.speechSynthesis.onvoiceschanged = () => trySpeak();
+                }
+            };
+            trySpeak();
+        };
     };
 
     const stopSpeaking = () => {
@@ -98,9 +116,9 @@ const ChatBot = () => {
                 }
             ]);
 
-            // Speak the reply if speak=true
+            // Speak the reply
             if (data.speak && data.reply) {
-                speakText(data.reply, data.detected_language || language.code);
+                speakWhenReady(data.reply, data.detected_language || language.code);
             }
 
         } catch (err) {
@@ -278,18 +296,57 @@ const ChatBot = () => {
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && sendMessage(inputText)}
-                        placeholder="Ask about weather, air quality, civic issues..."
-                        className="flex-1 h-12 bg-[#111827] border border-[rgba(255,255,255,0.08)] text-white rounded-xl pl-4 pr-12 text-sm focus:border-[var(--accent-cyan)]/50 focus:ring-1 focus:ring-[var(--accent-cyan)]/50 outline-none placeholder:text-gray-500"
+                        placeholder={isListening ? "Listening..." : "Ask about weather, air quality, civic issues..."}
+                        className={cn(
+                            "flex-1 h-12 bg-[#111827] border border-[rgba(255,255,255,0.08)] text-white rounded-xl pl-4 text-sm outline-none placeholder:text-gray-500 transition-all",
+                            isVoiceSupported ? "pr-[5.5rem]" : "pr-12",
+                            isListening ? "border-[var(--accent-cyan)]/50 ring-1 ring-[var(--accent-cyan)]/30 bg-[#111827]/80" : "focus:border-[var(--accent-cyan)]/50 focus:ring-1 focus:ring-[var(--accent-cyan)]/50"
+                        )}
                     />
+
+                    {/* Compact Voice Button directly inside ChatBot */}
+                    {isVoiceSupported && (
+                        <div className="absolute right-[52px] top-1/2 -translate-y-1/2">
+                            <button
+                                onClick={() => isListening ? stopListening() : startListening()}
+                                disabled={isLoading}
+                                className={cn(
+                                    "relative z-50 flex items-center justify-center w-10 h-10 rounded-full border transition-all cursor-pointer",
+                                    isListening ? "bg-[var(--accent-cyan)] border-white/20 shadow-[0_0_15px_var(--accent-cyan)]/50" : "bg-transparent border-[var(--accent-cyan)] text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)] hover:text-black",
+                                    isLoading && "opacity-50 pointer-events-none grayscale"
+                                )}
+                                title="Voice Input"
+                            >
+                                {/* Pulsing ring while listening */}
+                                {isListening && (
+                                    <motion.div
+                                        initial={{ scale: 1, opacity: 1 }}
+                                        animate={{ scale: 1.5, opacity: 0 }}
+                                        transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+                                        className="absolute inset-0 rounded-full border border-[var(--accent-cyan)]"
+                                    />
+                                )}
+                                <Mic className={cn("w-[18px] h-[18px]", isListening ? "text-slate-900" : "currentColor")} />
+                            </button>
+                        </div>
+                    )}
 
                     <button
                         onClick={() => sendMessage(inputText)}
                         disabled={!inputText.trim() || isLoading}
-                        className="absolute right-1 top-1 w-10 h-10 rounded-lg bg-[var(--accent-cyan)] text-black flex items-center justify-center disabled:opacity-50 disabled:bg-gray-600 disabled:text-gray-400 transition-colors hover:scale-105 active:scale-95"
+                        className="absolute right-1 top-1 w-10 h-10 rounded-lg bg-[var(--accent-cyan)] text-black flex items-center justify-center disabled:opacity-50 disabled:bg-gray-600 disabled:text-gray-400 transition-colors hover:scale-105 active:scale-95 z-50"
                     >
                         <Send className="w-4 h-4 ml-0.5" />
                     </button>
                 </div>
+                {/* Voice Error Display below input */}
+                <AnimatePresence>
+                    {voiceError && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-400 text-[11px] px-2 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> {voiceError.message}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

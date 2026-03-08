@@ -71,16 +71,32 @@ export default function useVoice({ language = 'en-US', onTranscript }) {
         };
     }, [language, onTranscript, transcript]);
 
-    const startListening = () => {
+    const startListening = async () => {
         setError(null);
         setTranscript('');
+
+        const isSecure = window.location.protocol === 'https:' ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1';
+        if (!isSecure) {
+            setError(new Error('Voice requires HTTPS. Please use text input.'));
+            return;
+        }
+
         try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
             if (recognitionRef.current) {
                 recognitionRef.current.start();
             }
         } catch (err) {
             console.error(err);
-            setError(err);
+            if (err.name === 'NotAllowedError') {
+                setError(new Error('Microphone permission denied. Click the mic icon in your browser address bar.'));
+            } else if (err.name === 'NetworkError' || err.message.includes('network')) {
+                setError(new Error('Voice requires HTTPS. Please type your question instead.'));
+            } else {
+                setError(new Error('Could not start voice. Please type your question.'));
+            }
         }
     };
 
