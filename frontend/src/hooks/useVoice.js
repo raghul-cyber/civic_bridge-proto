@@ -36,7 +36,17 @@ export default function useVoice({ language = 'en-US', onTranscript }) {
         };
 
         const handleError = (event) => {
-            setError(new Error(event.error));
+            let errorMsg = event.error;
+            if (errorMsg === 'network') {
+                errorMsg = "Browser blocked Speech API. Please disable Brave Shields/AdBlock, or use 'Type' mode.";
+            } else if (errorMsg === 'not-allowed') {
+                errorMsg = "Microphone access denied.";
+            } else if (errorMsg === 'no-speech') {
+                errorMsg = "No speech detected. Please try again.";
+            } else if (errorMsg === 'aborted') {
+                errorMsg = "Speech recognition aborted.";
+            }
+            setError(new Error(errorMsg));
             setIsListening(false);
         };
 
