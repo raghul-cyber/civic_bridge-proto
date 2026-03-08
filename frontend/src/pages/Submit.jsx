@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, MapPin, Tag, Sparkles, CheckCircle2 } from 'lucide-react';
+import { FileText, MapPin, Tag, Sparkles, CheckCircle2, Send } from 'lucide-react';
 import { cn } from '../lib/utils';
 import PriorityBadge from '../components/PriorityBadge';
 import CategoryIcon from '../components/CategoryIcon';
