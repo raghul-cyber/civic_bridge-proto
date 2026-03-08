@@ -7,6 +7,8 @@
 # ============================================================
 set -euo pipefail
 
+# Disable AWS CLI pagination so bash script does not freeze on JSON outputs
+export AWS_PAGER=""
 REGION="us-east-1"
 ACCOUNT_ID="842533680239"
 CLUSTER="civic-bridge-cluster"
