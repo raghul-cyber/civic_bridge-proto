@@ -4,6 +4,7 @@ import { Bot, User, Send, Keyboard, Cloud, Leaf, Flag, Coins, Users, AlertCircle
 import { cn } from '../lib/utils';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
 import useVoice from '../hooks/useVoice';
+import api from '../lib/api';
 
 const initialWelcomeMessage = {
     role: 'bot',
@@ -85,18 +86,12 @@ const ChatBot = () => {
         setMessages(prev => [...prev, { role: 'bot', content: '', id: 'typing', isTyping: true }]);
 
         try {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: text,
-                    language: language.code,
-                    city: 'Chicago',
-                    session_id: sessionStorage.getItem('chat_session') || ''
-                })
+            const data = await api.post('/api/chat', {
+                message: text,
+                language: language.code,
+                city: 'Chicago',
+                session_id: sessionStorage.getItem('chat_session') || ''
             });
-
-            const data = await res.json();
 
             // Auto-switch language if backend detected different language
             if (data.detected_language && data.detected_language !== language.code) {
