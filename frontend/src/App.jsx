@@ -5,7 +5,7 @@ import { Mic, Send, Globe, FileText, Activity, StopCircle, Sparkles, WifiOff, Vo
 import LanguageSelector, { languages } from './components/LanguageSelector';
 import VoiceVisualizer from './components/VoiceVisualizer';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function App() {
   const [messages, setMessages] = useState([

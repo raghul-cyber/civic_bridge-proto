@@ -24,8 +24,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://*.amplifyapp.com",
     ],
+    allow_origin_regex=r"https://.*\.amplifyapp\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
