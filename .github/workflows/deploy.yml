@@ -263,8 +263,9 @@ jobs:
       # ── Smoke Test ──
       - name: Run smoke test
         run: |
-          echo "Running smoke test against ${{ secrets.API_URL }}"
-          curl -f "${{ secrets.API_URL }}/health" || exit 1
+          CLEAN_API_URL=$(echo "${{ secrets.API_URL }}" | tr -d '\n\r ')
+          echo "Running smoke test against $CLEAN_API_URL"
+          curl -f "$CLEAN_API_URL/health" || exit 1
           echo "✅ Smoke test passed"
 
       - name: Notify deployment success
