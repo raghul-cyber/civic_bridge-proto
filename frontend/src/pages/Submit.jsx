@@ -1,98 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Send, Keyboard, FileText, MapPin, Tag, Sparkles, CheckCircle2, Bot, User, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { FileText, MapPin, Tag, Sparkles, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import VoiceButton from '../components/VoiceButton';
 import PriorityBadge from '../components/PriorityBadge';
 import CategoryIcon from '../components/CategoryIcon';
 import SectionHeader from '../components/SectionHeader';
 import SkeletonCard from '../components/SkeletonCard';
-import { useLanguage, LANGUAGES } from '../context/LanguageContext';
 import useToast from '../hooks/useToast';
-import { mockIssues, mockStats, mockDatasets } from '../data/mockData';
+import ChatBot from '../components/ChatBot';
 
 const Submit = () => {
-    const { language, setLanguage } = useLanguage();
     const { showToast } = useToast();
-
-    const [inputMode, setInputMode] = useState('type'); // 'voice' | 'type'
-    const [textInput, setTextInput] = useState('');
-    const [messages, setMessages] = useState([
-        { id: 1, role: 'ai', text: "Hello! I am your CivicBridge AI Assistant. I can help you report an issue, or you can ask me questions about current city data (like air quality, weather, or open issues). How can I help you today?" }
-    ]);
-    const [isTyping, setIsTyping] = useState(false);
 
     // Right panel data extraction states
     const [isExtracting, setIsExtracting] = useState(false);
     const [extractedData, setExtractedData] = useState(null);
     const [isSubmitted, setIsSubmitted] = useState(false);
 
-    const chatEndRef = useRef(null);
-
-    // Auto-scroll chat to bottom
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isTyping]);
-
-    const handleSendMessage = (text = textInput) => {
-        if (!text.trim()) return;
-
-        const newMsg = { id: Date.now(), role: 'user', text };
-        setMessages(prev => [...prev, newMsg]);
-        setTextInput('');
-
-        processChat(text);
-    };
-
-    const processChat = (userText) => {
-        setIsTyping(true);
-        const lower = userText.toLowerCase();
-
-        // Simulate network delay
-        setTimeout(() => {
-            let aiResponse = "";
-            let triggerExtraction = false;
-
-            // Simple NLP Dataset Matching
-            if (lower.includes('air quality') || lower.includes('aqi') || lower.includes('pollution')) {
-                aiResponse = `The current Air Quality Index is ${mockDatasets.airQuality.aqi} (${mockDatasets.airQuality.status}). The trend over the last 12 hours stands at: ${mockDatasets.airQuality.trend.join(', ')}.`;
-            }
-            else if (lower.includes('weather') || lower.includes('temperature') || lower.includes('rain')) {
-                aiResponse = `The current weather is ${mockDatasets.weather.temp}°F with a humidity of ${mockDatasets.weather.humidity}%. It is ${mockDatasets.weather.condition}.`;
-            }
-            else if (lower.includes('how many issues') || lower.includes('total issues') || lower.includes('stats')) {
-                aiResponse = `There are currently ${mockStats.openIssues.toLocaleString()} open issues out of ${mockStats.totalIssues.toLocaleString()} total reports. Our resolution rate is ${mockStats.resolutionRate}%, spanning across ${mockStats.activeWards} wards in the city!`;
-            }
-            else if (lower.includes('pothole')) {
-                const similar = mockIssues.find(i => i.category === 'pothole');
-                aiResponse = `I see you are reporting a pothole. I've found a similar active issue: "${similar.title}" in ${similar.ward}. I am extracting your details to log a new report ticket for the Department of Transportation.`;
-                triggerExtraction = true;
-            }
-            else if (lower.includes('streetlight') || lower.includes('darking') || lower.includes('light')) {
-                aiResponse = `I understand you're reporting a streetlight outage. Streetlight maintenance is a high priority for public safety. I'm extracting your report for the Electrical Department.`;
-                triggerExtraction = true;
-            }
-            else if (lower.includes('flood') || lower.includes('water')) {
-                aiResponse = `Flooding is a critical issue that requires immediate attention from Public Works. I'm extracting this data immediately!`;
-                triggerExtraction = true;
-            }
-            else if (lower.includes('garbage') || lower.includes('trash') || lower.includes('waste')) {
-                aiResponse = `I'm logging your sanitation complaint regarding garbage collection. Extracting the location for Sanitation Services.`;
-                triggerExtraction = true;
-            }
-            else {
-                aiResponse = "I've received your message. Let me extract the key details so we can log this as an official civic report ticket.";
-                triggerExtraction = true;
-            }
-
-            setMessages(prev => [...prev, { id: Date.now(), role: 'ai', text: aiResponse }]);
-            setIsTyping(false);
-
-            if (triggerExtraction) {
-                runExtractionPipeline(userText);
-            }
-        }, 1500);
-    };
 
     const runExtractionPipeline = (text) => {
         setIsExtracting(true);
@@ -181,160 +105,8 @@ const Submit = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-12">
 
                 {/* Left Panel: Chatbot Interface */}
-                <div className="glass rounded-3xl overflow-hidden flex flex-col h-[650px] relative border-[var(--border)] shadow-2xl">
-                    <div className="absolute inset-0 bg-radial-gradient from-[var(--accent-cyan)]/5 to-transparent pointer-events-none" />
-
-                    {/* Chat Header */}
-                    <div className="p-4 border-b border-white/10 bg-black/40 flex items-center justify-between z-10 shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[var(--accent-cyan)]/20 flex items-center justify-center text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/30">
-                                <Bot className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="text-white font-bold font-display text-sm">CivicBridge AI</h3>
-                                <p className="text-[10px] text-[var(--caption)] uppercase tracking-widest text-[var(--accent-cyan)] flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-cyan)] animate-pulse" />
-                                    Online
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Language Selector built into header */}
-                        <div className="flex gap-1 bg-white/5 p-1 rounded-full border border-white/10 hidden sm:flex">
-                            {LANGUAGES.slice(0, 3).map((lang) => (
-                                <button
-                                    key={lang.code}
-                                    onClick={() => setLanguage(lang)}
-                                    className={cn(
-                                        "px-2 py-1 rounded-full text-[9px] font-bold transition-all flex items-center gap-1",
-                                        lang.code === language.code
-                                            ? "bg-[var(--accent-cyan)] text-black"
-                                            : "text-[var(--text-muted)] hover:text-white"
-                                    )}
-                                >
-                                    {lang.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Chat Message Feed */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 z-10 scrollbar-thin scrollbar-thumb-white/10">
-                        <AnimatePresence>
-                            {messages.map((msg) => (
-                                <motion.div
-                                    key={msg.id}
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    className={cn(
-                                        "flex gap-3 max-w-[85%]",
-                                        msg.role === 'user' ? "ml-auto flex-row-reverse" : ""
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0 border",
-                                        msg.role === 'user'
-                                            ? "bg-white/10 border-white/20 text-white"
-                                            : "bg-[var(--accent-cyan)]/20 border-[var(--accent-cyan)]/30 text-[var(--accent-cyan)]"
-                                    )}>
-                                        {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                                    </div>
-                                    <div className={cn(
-                                        "p-4 rounded-2xl text-sm leading-relaxed",
-                                        msg.role === 'user'
-                                            ? "bg-white/10 text-white rounded-tr-sm border border-white/10"
-                                            : "bg-[#111827] text-[var(--text-secondary)] rounded-tl-sm border border-[var(--accent-cyan)]/20 shadow-[0_4px_20px_rgba(0,212,255,0.05)]"
-                                    )}>
-                                        {msg.text}
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {isTyping && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="flex gap-3 max-w-[85%]"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-[var(--accent-cyan)]/20 border border-[var(--accent-cyan)]/30 flex items-center justify-center text-[var(--accent-cyan)]">
-                                        <Bot className="w-4 h-4" />
-                                    </div>
-                                    <div className="p-4 bg-[#111827] rounded-2xl rounded-tl-sm border border-[var(--accent-cyan)]/20 flex gap-1.5 items-center">
-                                        <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} className="w-1.5 h-1.5 bg-[var(--accent-cyan)] rounded-full" />
-                                        <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-[var(--accent-cyan)] rounded-full" />
-                                        <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-[var(--accent-cyan)] rounded-full" />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                        <div ref={chatEndRef} />
-                    </div>
-
-                    {/* Chat Input Bar */}
-                    <div className="p-4 bg-black/60 border-t border-white/10 z-10 shrink-0 backdrop-blur-md">
-
-                        {/* Voice & Type Controls wrapper */}
-                        <div className="flex gap-3 items-end">
-
-                            {/* Mode Toggle Column */}
-                            <div className="flex flex-col gap-2 shrink-0">
-                                <button
-                                    onClick={() => setInputMode(prev => prev === 'type' ? 'voice' : 'type')}
-                                    className="w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors"
-                                    title={`Switch to ${inputMode === 'type' ? 'Voice' : 'Type'} Mode`}
-                                >
-                                    {inputMode === 'type' ? <Mic className="w-5 h-5" /> : <Keyboard className="w-5 h-5" />}
-                                </button>
-                            </div>
-
-                            {/* Active Input Component */}
-                            <div className="flex-1 flex justify-center items-center h-12">
-                                <AnimatePresence mode="popLayout">
-                                    {inputMode === 'voice' ? (
-                                        <motion.div
-                                            key="voice-mode"
-                                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                            className="w-full h-full flex items-center justify-center"
-                                        >
-                                            {/* Minimal footprint VoiceButton wrapper */}
-                                            <div className="relative w-full h-full transform scale-75 origin-center -mt-6">
-                                                <VoiceButton
-                                                    language={language.code}
-                                                    onTranscript={handleVoiceTranscript}
-                                                    onStart={() => { }}
-                                                />
-                                            </div>
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div
-                                            key="text-mode"
-                                            initial={{ opacity: 0, x: 20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: -20 }}
-                                            className="relative flex-1"
-                                        >
-                                            <input
-                                                type="text"
-                                                value={textInput}
-                                                onChange={(e) => setTextInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                                placeholder="Message CivicBridge AI..."
-                                                className="w-full h-12 bg-[#111827] border border-[rgba(255,255,255,0.08)] text-[#F9FAFB] rounded-xl px-4 pr-12 text-sm focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)] outline-none"
-                                            />
-                                            <button
-                                                onClick={() => handleSendMessage()}
-                                                disabled={!textInput.trim()}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[var(--accent-cyan)] text-black flex items-center justify-center disabled:opacity-50 disabled:bg-gray-600 disabled:text-gray-400 transition-colors"
-                                            >
-                                                <Send className="w-4 h-4 ml-0.5" />
-                                            </button>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </div>
+                <div className="h-[650px]">
+                    <ChatBot onMessage={runExtractionPipeline} />
                 </div>
 
                 {/* Right Panel: Extraction Preview */}
