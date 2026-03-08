@@ -13,10 +13,10 @@ CLUSTER="civic-bridge-cluster"
 BACKEND_REPO="civic-bridge-backend"
 FRONTEND_REPO="civic-bridge-frontend"
 ECR_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
-VPC_ID=""          # ← fill in your VPC ID
-SUBNET_1=""        # ← fill in public subnet 1
-SUBNET_2=""        # ← fill in public subnet 2
-SG_ID=""           # ← fill in security group
+VPC_ID="vpc-0b14d198c5bba6711"
+SUBNET_1="subnet-06c7ce3ec8cfd9e09"
+SUBNET_2="subnet-0835a6d9e30ed3912"
+SG_ID="sg-0eccd4fc26d3d35a7"
 
 echo "=== CivicBridge ECS Setup ==="
 
