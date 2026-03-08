@@ -15,3 +15,5 @@ chromadb==0.4.24
 beautifulsoup4==4.12.3
 sentence-transformers==2.5.1
 edge-tts==6.1.10
+langdetect==1.0.9
+anthropic==0.18.1
