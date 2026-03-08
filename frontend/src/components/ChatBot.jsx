@@ -87,7 +87,7 @@ const ChatBot = () => {
             const data = await api.post('/api/chat', {
                 message: text,
                 language: language.code,
-                city: 'Chicago',
+                city: 'New Delhi',
                 session_id: sessionStorage.getItem('chat_session') || ''
             });
 
@@ -150,11 +150,11 @@ const ChatBot = () => {
     // Quick chips logic based on current language
     const getQuickChips = () => {
         if (language.code === 'hi-IN') {
-            return ['Aaj ka mausam', 'Vayu guna', 'Nagarik samasya', 'Shahar bajat'];
+            return ['Delhi vayu guna', 'Mumbai bajat', 'Bangalore traffic', 'Nagarik samasya', 'Crime stats'];
         } else if (language.code === 'ta-IN') {
-            return ['Indru vanilam', 'Kaatrru tharam', 'Nagarik pirachanai', 'Nagar bajett'];
+            return ['Chennai vanilam', 'Delhi kaatrru', 'Bangalore nerisal', 'Nagar bajett', 'Makkal thokai'];
         }
-        return ['Weather today', 'Air quality', 'Recent issues', 'City budget', 'Population'];
+        return ['Delhi AQI', 'Mumbai Budget', 'Bangalore Traffic', 'Recent issues', 'Crime stats'];
     };
 
     return (

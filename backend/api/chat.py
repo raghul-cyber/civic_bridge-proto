@@ -1,14 +1,13 @@
 import os
 import re
-import httpx
 import boto3
 from fastapi import APIRouter
 from pydantic import BaseModel
 from langdetect import detect
+from .indian_datasets import *
 
 router = APIRouter()
 
-# --- STEP 2: Language Detection ---
 def detect_language(text: str) -> str:
     try:
         lang = detect(text)
@@ -20,39 +19,28 @@ def detect_language(text: str) -> str:
     except:
         return 'en-US'
 
-# --- STEP 3: NLP Intent Classifier ---
 INTENT_PATTERNS = {
-    'weather': [
-        r'weather', r'temperature', r'rain', r'forecast', r'hot', r'cold',
-        r'humid', r'climate', r'monsoon', r'barometer', r'wind',
-        r'\bweather\b', r'mausam', r'barish',  # Hindi
-        r'vanilam', r'mazhai',  # Tamil
-    ],
-    'air_quality': [
-        r'air quality', r'aqi', r'pollution', r'smog', r'pm2\.5',
-        r'pm10', r'particulate', r'breathe', r'breathing', r'air',
-        r'vayu', r'pradushan',  # Hindi
-        r'kaal nila',  # Tamil
-    ],
-    'issues': [
-        r'issue', r'complaint', r'report', r'problem', r'pothole',
-        r'streetlight', r'garbage', r'flooding', r'broken', r'repair',
-        r'status', r'ticket', r'open issue', r'recent', r'latest',
-        r'samasya', r'shikayat',  # Hindi
-        r'pirachanai',  # Tamil
-    ],
-    'budget': [
-        r'budget', r'spending', r'money', r'fund', r'expenditure',
-        r'allocation', r'government spend', r'taxpayer',
-        r'bajat', r'paisa',  # Hindi
-        r'bajett',  # Tamil
-    ],
-    'census': [
-        r'population', r'census', r'demographics', r'income',
-        r'how many people', r'residents', r'household',
-        r'janganana', r'jansankhya',  # Hindi
-        r'makkal thokai',  # Tamil
-    ],
+    'weather': [r'weather', r'temperature', r'rain', r'forecast', r'monsoon', r'mausam', r'barish', r'vanilam', r'mazhai'],
+    'air_quality': [r'air quality', r'aqi', r'pollution', r'smog', r'vayu', r'pradushan', r'kaal nila'],
+    'issues': [r'issue', r'complaint', r'report', r'problem', r'recent', r'samasya', r'shikayat', r'pirachanai'],
+    'budget': [r'budget', r'spending', r'fund', r'allocation', r'bajat', r'paisa', r'bajett'],
+    'census': [r'population', r'census', r'demographics', r'janganana', r'jansankhya', r'makkal thokai'],
+    'traffic': [r'traffic', r'congestion', r'speed', r'bottleneck', r'jam', r'trafik', r'nerisal'],
+    'water': [r'water', r'supply', r'shortage', r'jal', r'pani', r'thannir'],
+    'transport': [r'transport', r'bus', r'metro', r'ev', r'parivahan', r'yatra', r'pokkuvarathu'],
+    'literacy': [r'literacy', r'education', r'school', r'padhai', r'shiksha', r'kalvi'],
+    'health': [r'health', r'hospital', r'clinic', r'bed', r'swasthya', r'aspatal', r'maruthuvamanai'],
+    'crime': [r'crime', r'safety', r'cctv', r'police', r'suraksha', r'apradh', r'pathukappu'],
+    'electricity': [r'electricity', r'power', r'cut', r'bijli', r'vidyut', r'minsaram'],
+    'waste': [r'waste', r'garbage', r'trash', r'landfill', r'kachra', r'kuppai'],
+    'infrastructure': [r'pothole', r'road', r'repair', r'highway', r'sadak', r'saalai'],
+    'internet': [r'internet', r'broadband', r'5g', r'speed', r'network', r'valaiyalam'],
+    'housing': [r'housing', r'rent', r'slum', r'affordable', r'makan', r'ghar', r'veedu'],
+    'employment': [r'employment', r'unemployment', r'job', r'work', r'rozgar', r'velai'],
+    'green': [r'green', r'park', r'tree', r'hara', r'ped', r'maram'],
+    'women_safety': [r'women', r'pink', r'helpline', r'mahila', r'pengal'],
+    'disaster': [r'disaster', r'flood', r'heatwave', r'warning', r'aapda', r'baadh', r'vellam'],
+    'resolution': [r'resolved', r'sla', r'efficiency', r'nivaaran', r'theervu']
 }
 
 def classify_intent(text: str) -> str:
@@ -65,45 +53,6 @@ def classify_intent(text: str) -> str:
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else 'general'
 
-# --- STEP 4: Dataset Fetchers (all async with httpx) ---
-async def fetch_weather(city: str = 'Chicago') -> dict:
-    url = f'https://wttr.in/{city}?format=j1'
-    async with httpx.AsyncClient(timeout=10) as client:
-        try:
-            r = await client.get(url)
-            data = r.json()
-            current = data['current_condition'][0]
-            return {
-                'temp_c': current['temp_C'],
-                'temp_f': current['temp_F'],
-                'feels_like_c': current['FeelsLikeC'],
-                'humidity': current['humidity'],
-                'description': current['weatherDesc'][0]['value'],
-                'wind_kmph': current['windspeedKmph'],
-                'visibility_km': current['visibility'],
-                'uv_index': current['uvIndex'],
-            }
-        except Exception as e:
-            return {'error': str(e)}
-
-async def fetch_air_quality(city: str = 'Chicago') -> dict:
-    url = 'https://api.openaq.org/v2/latest'
-    params = {'city': city, 'limit': 1, 'order_by': 'lastUpdated',
-              'sort': 'desc', 'has_geo': True}
-    headers = {'X-API-Key': os.getenv('OPENAQ_API_KEY', '')}
-    async with httpx.AsyncClient(timeout=10) as client:
-        try:
-            r = await client.get(url, params=params, headers=headers)
-            data = r.json()
-            if not data.get('results'): return {'error': 'No air quality data found'}
-            measurements = data['results'][0]['measurements']
-            result = {'location': data['results'][0]['name']}
-            for m in measurements:
-                result[m['parameter']] = f"{m['value']} {m['unit']}"
-            return result
-        except Exception as e:
-             return {'error': str(e)}
-
 async def fetch_recent_issues(limit: int = 5) -> list:
     try:
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -115,87 +64,13 @@ async def fetch_recent_issues(limit: int = 5) -> list:
             Limit=limit
         )
         return response.get('Items', [])
-    except Exception as e:
+    except:
         return []
 
-async def fetch_budget_data(agency: str = 'Department of Transportation') -> dict:
-    url = 'https://api.usaspending.gov/api/v2/search/spending_by_award/'
-    payload = {
-        'filters': {'agencies': [{'type': 'awarding', 'tier': 'toptier',
-                   'name': agency}], 'time_period': [{'start_date': '2023-10-01',
-                   'end_date': '2024-09-30'}]},
-        'fields': ['Award Amount', 'Recipient Name', 'Award Type'],
-        'limit': 5, 'page': 1
-    }
-    async with httpx.AsyncClient(timeout=15) as client:
-        try:
-            r = await client.post(url, json=payload)
-            data = r.json()
-            total = sum(a.get('Award Amount', 0) for a in data.get('results', []))
-            return {'agency': agency, 'total_awarded': total,
-                    'top_recipients': [a.get('Recipient Name') for a in data.get('results', [])[:3]]}
-        except Exception as e:
-            return {'error': str(e)}
-
-async def fetch_census_data(city: str = 'Chicago', state: str = 'IL') -> dict:
-    api_key = os.getenv('CENSUS_API_KEY', '')
-    url = f'https://api.census.gov/data/2022/acs/acs5'
-    params = {
-        'get': 'NAME,B01003_001E,B19013_001E,B25077_001E',
-        'for': 'place:*', 'in': f'state:17', 'key': api_key
-    }
-    async with httpx.AsyncClient(timeout=10) as client:
-        try:
-            r = await client.get(url, params=params)
-            rows = r.json()
-            chicago = next((row for row in rows[1:] if 'Chicago' in str(row[0])), None)
-            if not chicago: return {'error': 'City not found'}
-            return {
-                'city': chicago[0], 'population': int(chicago[1]),
-                'median_income': int(chicago[2]), 'median_home_value': int(chicago[3])
-            }
-        except Exception as e:
-            return {'error': str(e)}
-
-# --- STEP 5: Multilingual Response Formatter ---
-RESPONSE_TEMPLATES = {
-    'weather': {
-        'en-US': 'Current weather in {city}: {description}. Temperature: {temp_c}C ({temp_f}F). Feels like {feels_like_c}C. Humidity: {humidity}%. Wind: {wind_kmph} km/h. UV Index: {uv_index}.',
-        'hi-IN': '{city} mein abhi mausam: {description}. Taapman: {temp_c}C. Nami: {humidity}%. Hawa: {wind_kmph} km/h.',
-        'ta-IN': '{city} il t vanilam: {description}. Veppanilai: {temp_c}C. Eerappatham: {humidity}%. Kaatrru: {wind_kmph} km/h.',
-    },
-    'air_quality': {
-        'en-US': 'Air quality in {city}: PM2.5 level is {pm25}. {health_advice}',
-        'hi-IN': '{city} mein vayu guna: PM2.5 star {pm25} hai. {health_advice}',
-        'ta-IN': '{city} il kaatrru tharam: PM2.5 aalavu {pm25}. {health_advice}',
-    },
-    'issues': {
-        'en-US': 'There are currently {count} open civic issues. Recent reports include: {summary}',
-        'hi-IN': 'Abhi {count} nagarik samasya khuli hain. Haaliya shikayatein: {summary}',
-        'ta-IN': 'Tarpothu {count} thiranthu vullu nagarik pirachanaikal. Sameebathiya arikkaigal: {summary}',
-    },
-}
-
-def get_health_advice(pm25_value: float, lang: str) -> str:
-    if pm25_value < 12:
-        msgs = {'en-US': 'Air is Good. Safe for all activities.',
-                'hi-IN': 'Vayu achhi hai. Sab ke liye surakshit.',
-                'ta-IN': 'Kaatrru nalladu. Anavaram seyalpaduthu suraksitham.'}
-    elif pm25_value < 35:
-        msgs = {'en-US': 'Air quality is Moderate.',
-                'hi-IN': 'Vayu guna madhyam hai.',
-                'ta-IN': 'Kaatrru tharam mathiyamam.'}
-    else:
-        msgs = {'en-US': 'Air quality is Unhealthy. Avoid outdoor activities.',
-                'hi-IN': 'Vayu guna kharab hai. Bahar mat jaiye.',
-                'ta-IN': 'Kaatrru tharam mosam. Veliyil pokatheergal.'}
-    return msgs.get(lang, msgs['en-US'])
-
-# --- STEP 6: Main Chat Endpoint ---
 class ChatRequest(BaseModel):
     message: str
-    language: str = 'en-US'  # can be overridden by detection
-    city: str = 'Chicago'
+    language: str = 'en-US'
+    city: str = 'New Delhi'
     session_id: str = ''
 
 class ChatResponse(BaseModel):
@@ -203,7 +78,7 @@ class ChatResponse(BaseModel):
     detected_language: str
     intent: str
     data: dict
-    speak: bool = True  # tell frontend to speak this reply
+    speak: bool = True
 
 @router.post('/api/chat', response_model=ChatResponse)
 async def chat(req: ChatRequest):
@@ -211,63 +86,79 @@ async def chat(req: ChatRequest):
     intent = classify_intent(req.message)
     data = {}
     reply = ''
-    
+    city = req.city if req.city != 'Chicago' else 'New Delhi'
+
     if intent == 'weather':
-        data = await fetch_weather(req.city)
-        if 'error' not in data:
-            template = RESPONSE_TEMPLATES['weather'].get(detected_lang,
-                       RESPONSE_TEMPLATES['weather']['en-US'])
-            reply = template.format(city=req.city, **data)
-        else:
-            reply = f'Sorry, weather data for {req.city} is unavailable right now.'
+        data = await fetch_weather_india(city)
+        reply = f"Weather in {city}: {data['description']}, {data['temp_c']}°C. Humidity {data['humidity']}%. Wind {data['wind_kmph']} km/h."
     elif intent == 'air_quality':
-        data = await fetch_air_quality(req.city)
-        if 'error' not in data:
-            pm25_raw = data.get('pm25', '0 ug/m3')
-            pm25_val = float(pm25_raw.split()[0]) if pm25_raw else 0
-            advice = get_health_advice(pm25_val, detected_lang)
-            template = RESPONSE_TEMPLATES['air_quality'].get(detected_lang,
-                       RESPONSE_TEMPLATES['air_quality']['en-US'])
-            reply = template.format(city=req.city, pm25=pm25_raw, health_advice=advice)
-        else:
-            reply = 'Air quality data is currently unavailable.'
+        data = await fetch_aqi_india(city)
+        reply = f"AQI in {city} is {data['pm25_value']} {data['unit']}. " + ("Poor air quality." if data['pm25_value'] > 100 else "Moderate air quality.")
     elif intent == 'issues':
         issues = await fetch_recent_issues(5)
-        count = len(issues)
-        summary = ', '.join([i.get('title', 'Unknown issue') for i in issues[:3]])
-        template = RESPONSE_TEMPLATES['issues'].get(detected_lang,
-                   RESPONSE_TEMPLATES['issues']['en-US'])
-        reply = template.format(count=count, summary=summary or 'No recent issues')
+        reply = f"There are {len(issues)} open issues in {city}. Most recent: " + ", ".join([i.get('title', '') for i in issues[:2]])
         data = {'issues': issues}
     elif intent == 'budget':
-        data = await fetch_budget_data()
-        amt = f"${data['total_awarded']:,.0f}" if data.get('total_awarded') else 'N/A'
-        if detected_lang == 'hi-IN':
-            reply = f"Sarkar ne {data.get('agency','vibhag')} ko {amt} diya hai."
-        elif detected_lang == 'ta-IN':
-            reply = f"Aracu {data.get('agency','')} ku {amt} vankiyadu."
-        else:
-            reply = f"Government allocated {amt} to {data.get('agency','the department')} this fiscal year."
+        data = await fetch_budget_india(city)
+        reply = f"{data['body']} budget for {city} is ₹{data['budget_cr']} Crores."
     elif intent == 'census':
-        data = await fetch_census_data(req.city)
-        if 'error' not in data:
-            pop = f"{data['population']:,}"
-            inc = f"${data['median_income']:,}"
-            if detected_lang == 'hi-IN':
-                reply = f"{req.city} ki jansankhya {pop} hai. Madhyan aay {inc} pratighar hai."
-            elif detected_lang == 'ta-IN':
-                reply = f"{req.city} il makkal thokai {pop}. Mathiya varumanam {inc}."
-            else:
-                reply = f"{req.city} has a population of {pop}. Median household income is {inc}."
-        else:
-            reply = "Sorry, demographic data is unavailable right now."
+        data = await fetch_census_india(city)
+        reply = f"Population of {city} is roughly {data['population']:,} growing at {data['growth_rate']}."
+    elif intent == 'traffic':
+        data = await fetch_traffic_india(city)
+        reply = f"Traffic congestion in {city} is {data['congestion_level']}%. Avg speed is {data['avg_speed_kmph']} km/h."
+    elif intent == 'water':
+        data = await fetch_water_india(city)
+        reply = f"Water supply is {data['supply_mld']} MLD with a {data['deficit_percent']}% deficit. Quality index: {data['quality_index']}/100."
+    elif intent == 'transport':
+        data = await fetch_transport_india(city)
+        reply = f"Public transport: {data['active_buses']} active buses. Metro daily ridership: {data['metro_ridership_lakhs']} Lakhs. EV Adoption: {data['ev_adoption_rate']}."
+    elif intent == 'literacy':
+        data = await fetch_literacy_india(city)
+        reply = f"The estimated literacy rate in {city}/state is {data['literacy_rate']}%."
+    elif intent == 'health':
+        data = await fetch_health_india(city)
+        reply = f"Healthcare: {data['govt_hospitals']} Govt Hospitals. {data['beds_per_1000']} beds per 1000 people."
+    elif intent == 'crime':
+        data = await fetch_crime_india(city)
+        reply = f"Safety Index is {data['safety_index']}/100. CCTV coverage is {data['cctv_coverage']}."
+    elif intent == 'electricity':
+        data = await fetch_electricity_india(city)
+        reply = f"Peak demand is {data['peak_demand_mw']} MW. Renewable share is {data['renewables_share']}."
+    elif intent == 'waste':
+        data = await fetch_waste_india(city)
+        reply = f"Generates {data['waste_generated_tpd']} TPD of waste with {data['processing_efficiency']} processing efficiency."
+    elif intent == 'infrastructure':
+        data = await fetch_infrastructure_india(city)
+        reply = f"Roads: {data['potholes_reported']} potholes reported, {data['potholes_repaired']} repaired. {data['new_road_projects']} new road projects."
+    elif intent == 'internet':
+        data = await fetch_internet_india(city)
+        reply = f"Broadband speed averages {data['broadband_speed_mbps']} Mbps. 5G coverage is {data['5g_coverage']}."
+    elif intent == 'housing':
+        data = await fetch_housing_india(city)
+        reply = f"Avg 1BHK rent is ₹{data['avg_rent_1bhk']}. {data['affordable_projects_active']} affordable housing projects active."
+    elif intent == 'employment':
+        data = await fetch_employment_india(city)
+        reply = f"Unemployment rate is {data['unemployment_rate']}. {data['formal_jobs_created']} formal jobs created recently."
+    elif intent == 'green':
+        data = await fetch_green_india(city)
+        reply = f"Green cover is {data['green_cover_sqkm']} sq km. {data['trees_planted_ytd']:,} trees planted YTD."
+    elif intent == 'women_safety':
+        data = await fetch_women_safety_india(city)
+        reply = f"Women Safety: {data['pink_police_patrols']} Pink Police patrols. Helpline response: {data['helpline_response_time']}."
+    elif intent == 'disaster':
+        data = await fetch_disaster_india(city)
+        reply = f"Disaster Mgmt: Primary risk is {data['primary_risk']}. {data['evacuation_shelters']} active evacuation shelters."
+    elif intent == 'resolution':
+        data = await fetch_resolution_india(city)
+        reply = f"Civic Resolution: {data['resolved_percent']} of complaints resolved within SLA averaging {data['avg_sla_days']} days."
     else:
-        if detected_lang == 'hi-IN':
-            reply = 'Main mausam, vayu guna, nagarik samasya, bajat, ya jansankhya ke bare mein bata sakta hoon. Aap kya jaanna chahte hain?'
-        elif detected_lang == 'ta-IN':
-            reply = 'Naan vanilam, kaatrru tharam, pirachanaikal, bajett, makkal thokai pattri solluveen. Neengal enna ketka virupam?'
-        else:
-            reply = 'I can help you with weather, air quality, civic issues, budget spending, or census data. What would you like to know?'
-            
-    return ChatResponse(reply=reply, detected_language=detected_lang,
-                        intent=intent, data=data, speak=True)
+        reply = "I can share data about India on: weather, AQI, population, transport, crime, waste, literacy, and 13 other civic metrics. Ask away!"
+
+    # Ensure Hindi/Tamil fallback localization wrapper (simulated simple translation wrap for prototype speed)
+    if detected_lang == 'hi-IN' and intent != 'general':
+        reply = f"(Hindi) {reply}"
+    elif detected_lang == 'ta-IN' and intent != 'general':
+        reply = f"(Tamil) {reply}"
+
+    return ChatResponse(reply=reply, detected_language=detected_lang, intent=intent, data=data, speak=True)
