@@ -1,11 +1,13 @@
+// src/components/Navbar.jsx 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown, Globe, LogIn } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { LANGUAGES } from '../lib/constants';
+import { useLanguage, LANGUAGES } from '../context/LanguageContext';
 
 const Navbar = () => {
+    const { language, setLanguage } = useLanguage();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isLangOpen, setIsLangOpen] = useState(false);
@@ -72,10 +74,10 @@ const Navbar = () => {
                     <div className="relative">
                         <button
                             onClick={() => setIsLangOpen(!isLangOpen)}
-                            className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-white transition-colors"
+                            className="flex items-center gap-1.5 text-sm font-bold text-[var(--accent-cyan)] hover:text-white transition-colors"
                         >
                             <Globe className="w-4 h-4" />
-                            <span>EN</span>
+                            <span>{language.label}</span>
                             <ChevronDown className={cn("w-3 h-3 transition-transform", isLangOpen && "rotate-180")} />
                         </button>
 
@@ -90,7 +92,14 @@ const Navbar = () => {
                                     {LANGUAGES.map((lang) => (
                                         <button
                                             key={lang.code}
-                                            className="w-full text-left px-4 py-2 text-xs text-[var(--text-secondary)] hover:bg-white/5 hover:text-white transition-colors"
+                                            onClick={() => {
+                                                setLanguage(lang);
+                                                setIsLangOpen(false);
+                                            }}
+                                            className={cn(
+                                                "w-full text-left px-4 py-2 text-xs transition-colors",
+                                                lang.code === language.code ? "bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] font-bold" : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"
+                                            )}
                                         >
                                             {lang.name}
                                         </button>
@@ -141,7 +150,7 @@ const Navbar = () => {
                             <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
                                 <button className="flex items-center gap-2 text-[var(--text-secondary)]">
                                     <Globe className="w-5 h-5" />
-                                    <span>English</span>
+                                    <span>{language.name}</span>
                                 </button>
                                 <button className="px-6 py-2 rounded-full border border-[var(--accent-cyan)] text-[var(--accent-cyan)] font-medium">
                                     Login

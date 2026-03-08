@@ -6,13 +6,14 @@ import VoiceButton from '../components/VoiceButton';
 import PriorityBadge from '../components/PriorityBadge';
 import CategoryIcon from '../components/CategoryIcon';
 import SectionHeader from '../components/SectionHeader';
+import { useLanguage, LANGUAGES } from '../context/LanguageContext';
 
 const Submit = () => {
+    const { language, setLanguage } = useLanguage();
     const [transcript, setTranscript] = useState({ final: '', interim: '' });
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [extractedData, setExtractedData] = useState(null);
-    const [language, setLanguage] = useState('en-US');
 
     const handleTranscript = (data) => {
         setTranscript(data);
@@ -40,7 +41,6 @@ const Submit = () => {
 
     const handleSubmit = () => {
         setIsSubmitted(true);
-        // confetti or success animation handled by state change
     };
 
     if (isSubmitted) {
@@ -85,25 +85,28 @@ const Submit = () => {
                         {/* Background Glow */}
                         <div className="absolute inset-0 bg-radial-gradient from-[var(--accent-cyan)]/5 to-transparent pointer-events-none" />
 
-                        <div className="flex gap-2 mb-12 bg-white/5 p-1 rounded-full border border-white/10 relative z-10">
-                            {['EN', 'HI', 'TA', 'TE', 'BN'].map((l) => (
-                                <button
-                                    key={l}
-                                    onClick={() => setLanguage(l === 'EN' ? 'en-US' : 'hi-IN')}
-                                    className={cn(
-                                        "px-4 py-1.5 rounded-full text-[10px] font-bold transition-all",
-                                        (language.startsWith(l.toLowerCase()) || (l === 'EN' && language === 'en-US'))
-                                            ? "bg-[var(--accent-cyan)] text-black shadow-[0_0_12px_var(--accent-cyan)]"
-                                            : "text-[var(--text-muted)] hover:text-white"
-                                    )}
-                                >
-                                    {l}
-                                </button>
-                            ))}
+                        <div className="flex gap-2 mb-12 bg-white/5 p-1 rounded-full border border-white/10 relative z-10 flex-wrap justify-center">
+                            {LANGUAGES.map((lang) => {
+                                const isActive = lang.code === language.code;
+                                return (
+                                    <button
+                                        key={lang.code}
+                                        onClick={() => setLanguage(lang)}
+                                        className={cn(
+                                            "px-4 py-1.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1",
+                                            isActive
+                                                ? "bg-[var(--accent-cyan)] text-black shadow-[0_0_12px_var(--accent-cyan)]"
+                                                : "text-[var(--text-muted)] hover:text-white border border-transparent hover:border-white/10"
+                                        )}
+                                    >
+                                        {lang.label} <span className="opacity-60 text-[9px]">{lang.name}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         <VoiceButton
-                            language={language}
+                            language={language.code}
                             onTranscript={handleTranscript}
                             onStart={() => {
                                 setTranscript({ final: '', interim: '' });
