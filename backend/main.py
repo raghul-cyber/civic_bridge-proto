@@ -43,6 +43,7 @@ from api.tts_router import router as tts_router
 from api.nlp_router import router as nlp_router
 from api.issues_router import router as issues_router
 from api.s3_router import router as s3_router
+from api.chat import router as chat_router
 
 app.include_router(datasets_router)
 app.include_router(stt_router)
@@ -50,5 +51,6 @@ app.include_router(tts_router)
 app.include_router(nlp_router)
 app.include_router(issues_router)
 app.include_router(s3_router)
+app.include_router(chat_router)
 
 logger.info("CivicBridge API started — all routers registered")
