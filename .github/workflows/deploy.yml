@@ -297,6 +297,23 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-south-1
+
+      - name: Configure Amplify SPA Redirects
+        env:
+          APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
+        run: |
+          CLEAN_APP_ID=$(echo "$APP_ID" | tr -d '\n\r ')
+          cat << 'EOF' > custom-rules.json
+          [
+            {
+              "source": "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|ttf|map|json|webp|avif)$)([^.]+$)/>",
+              "target": "/index.html",
+              "status": "200"
+            }
+          ]
+          EOF
+          aws amplify update-app --app-id "$CLEAN_APP_ID" --custom-rules file://custom-rules.json || echo "Warning: failed to update custom rules"
+
       - name: Trigger Amplify deployment
         env:
           APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
