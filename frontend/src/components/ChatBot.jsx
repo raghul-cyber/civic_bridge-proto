@@ -35,36 +35,34 @@ const ChatBot = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isSpeaking, voiceError]);
 
-    const speakText = (text, langCode) => {
-        const speakWhenReady = (text, langCode) => {
-            if (!window.speechSynthesis) return;
+    const speakWhenReady = (text, langCode) => {
+        if (!window.speechSynthesis) return;
 
-            window.speechSynthesis.cancel();
+        window.speechSynthesis.cancel();
 
-            const trySpeak = () => {
-                const voices = window.speechSynthesis.getVoices();
-                if (voices.length > 0) {
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    const lang = langCode || 'en-US';
-                    utterance.lang = lang;
-                    utterance.rate = 0.9;
-                    utterance.pitch = 1.0;
-                    utterance.volume = 1.0;
+        const trySpeak = () => {
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                const lang = langCode || 'en-US';
+                utterance.lang = lang;
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
 
-                    const voice = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
-                    if (voice) utterance.voice = voice;
+                const voice = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+                if (voice) utterance.voice = voice;
 
-                    utterance.onstart = () => setIsSpeaking(true);
-                    utterance.onend = () => setIsSpeaking(false);
-                    utterance.onerror = () => setIsSpeaking(false);
+                utterance.onstart = () => setIsSpeaking(true);
+                utterance.onend = () => setIsSpeaking(false);
+                utterance.onerror = () => setIsSpeaking(false);
 
-                    window.speechSynthesis.speak(utterance);
-                } else {
-                    window.speechSynthesis.onvoiceschanged = () => trySpeak();
-                }
-            };
-            trySpeak();
+                window.speechSynthesis.speak(utterance);
+            } else {
+                window.speechSynthesis.onvoiceschanged = () => trySpeak();
+            }
         };
+        trySpeak();
     };
 
     const stopSpeaking = () => {
