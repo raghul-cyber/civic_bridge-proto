@@ -34,7 +34,7 @@ export function useAuth() {
 
             // Dispatch success event for toast notification
             window.dispatchEvent(new CustomEvent('login-success', { detail: data.user.name }));
-            navigate('/chat');  // redirect to main chat
+            navigate('/');  // redirect to home
         } catch (error) {
             console.error('Google Sign-In Error:', error);
             window.dispatchEvent(new CustomEvent('login-error', { detail: 'Google Sign-In Failed' }));

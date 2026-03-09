@@ -208,14 +208,21 @@ async def fetch_civic_issues(city: str, limit: int = 5) -> list:
 # CLAUDE LLM INTEGRATION
 # ═══════════════════════════════════════════════════════════════
 
-claude = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
-
 LANG_NAMES = {
     'hi-IN':'Hindi', 'ta-IN':'Tamil', 'te-IN':'Telugu', 'kn-IN':'Kannada',
     'bn-IN':'Bengali', 'mr-IN':'Marathi', 'gu-IN':'Gujarati', 'en-IN':'English'
 }
 
 async def ask_claude(query: str, context: dict, lang: str, city: str) -> str:
+    api_key = os.getenv('ANTHROPIC_API_KEY', '')
+    
+    if not api_key:
+        return (
+            "⚠️ **API Key Missing** \n\n"
+            "I cannot process your request because my Anthropic AI brain is disconnected. "
+            "Please add your `ANTHROPIC_API_KEY` to the AWS ECS Environment Variables or your local `.env` file!"
+        )
+
     lang_name = LANG_NAMES.get(lang, 'English')
     system = f'''You are CivicBridge AI, India's smartest civic assistant.
     You know: all Indian laws (IPC, CrPC, RTI, Constitution articles),
@@ -233,6 +240,7 @@ async def ask_claude(query: str, context: dict, lang: str, city: str) -> str:
     msg = f'Data context:\n{ctx_str}\n\nUser question: {query}' if ctx_str else query
     
     try:
+        claude = anthropic.Anthropic(api_key=api_key)
         resp = claude.messages.create(
             model='claude-3-sonnet-20240229', # Using active version of sonnet
             max_tokens=700,
@@ -242,7 +250,7 @@ async def ask_claude(query: str, context: dict, lang: str, city: str) -> str:
         return resp.content[0].text
     except Exception as e:
         logger.error(f"Claude API failed: {e}")
-        return "I'm sorry, I'm having trouble connecting to my brain right now. Please try again in a moment."
+        return f"I'm sorry, my AI processing failed. Error: {str(e)[:100]}..."
 
 # ═══════════════════════════════════════════════════════════════
 # MAIN CHAT ENDPOINT
