@@ -304,7 +304,8 @@ export default function ChatBot() {
         setIsTyping(true);
 
         try {
-            const res = await fetch('http://localhost:8000/api/chat', {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${API_URL}/api/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -439,8 +440,8 @@ export default function ChatBot() {
                                 {/* Regular Text Bubble */}
                                 {msg.type !== 'welcome' && msg.role !== 'error' && (
                                     <div className={`px-4 py-3 rounded-2xl ${msg.role === 'user'
-                                            ? 'bg-cyan-600 text-white rounded-br-none shadow-lg shadow-cyan-900/20'
-                                            : 'bg-white/10 text-gray-100 rounded-bl-none border border-white/10'
+                                        ? 'bg-cyan-600 text-white rounded-br-none shadow-lg shadow-cyan-900/20'
+                                        : 'bg-white/10 text-gray-100 rounded-bl-none border border-white/10'
                                         }`}>
                                         {msg.content}
                                     </div>
@@ -582,10 +583,10 @@ export default function ChatBot() {
                             <button
                                 onClick={isListening ? stopListening : startListening}
                                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isListening
-                                        ? 'bg-cyan-400 text-black shadow-[0_0_20px_rgba(34,211,238,0.5)] animate-pulse'
-                                        : voiceError
-                                            ? 'border-2 border-red-500 text-red-500 bg-red-900/20'
-                                            : 'border border-cyan-400/50 text-cyan-400 hover:bg-cyan-900/30'
+                                    ? 'bg-cyan-400 text-black shadow-[0_0_20px_rgba(34,211,238,0.5)] animate-pulse'
+                                    : voiceError
+                                        ? 'border-2 border-red-500 text-red-500 bg-red-900/20'
+                                        : 'border border-cyan-400/50 text-cyan-400 hover:bg-cyan-900/30'
                                     }`}
                                 title={voiceError || (isListening ? 'Stop Listening' : 'Use Voice (Ctrl+M)')}
                             >
@@ -598,8 +599,8 @@ export default function ChatBot() {
                             onClick={() => handleSend()}
                             disabled={!input.trim() || isTyping || isListening}
                             className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${input.trim() && !isTyping && !isListening
-                                    ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg'
-                                    : 'bg-white/5 text-gray-500 cursor-not-allowed'
+                                ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg'
+                                : 'bg-white/5 text-gray-500 cursor-not-allowed'
                                 }`}
                         >
                             <Send className="w-4 h-4 translate-x-px translate-y-px" />

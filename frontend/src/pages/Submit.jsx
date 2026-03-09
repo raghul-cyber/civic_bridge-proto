@@ -96,16 +96,16 @@ const Submit = () => {
                 description="Chat with our AI to query city datasets, or simply describe an issue to automatically generate a report ticket."
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-12">
+            <div className="flex flex-col lg:flex-row gap-8 mt-8">
 
                 {/* Left Panel: Chatbot Interface */}
-                <div className="h-[650px]">
+                <div className="w-full lg:w-[55%] h-[600px] lg:h-[700px] shadow-2xl rounded-2xl overflow-hidden border border-white/10 relative z-10">
                     <ChatBot onMessage={runExtractionPipeline} />
                 </div>
 
                 {/* Right Panel: Extraction Preview */}
-                <div className="space-y-6">
-                    <div className="glass p-8 rounded-3xl border-[var(--border)] h-[650px] flex flex-col pt-6">
+                <div className="w-full lg:w-[45%] flex flex-col space-y-6">
+                    <div className="glass p-6 lg:p-8 rounded-3xl border-[var(--border)] h-full min-h-[600px] lg:h-[700px] flex flex-col">
                         <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                             <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
                                 <Sparkles className="w-5 h-5 text-[var(--accent-cyan)]" />

@@ -8,7 +8,8 @@ export function useAuth() {
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
-            const res = await fetch('http://localhost:8000/api/auth/google', {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${API_URL}/api/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ credential: credentialResponse.credential })
