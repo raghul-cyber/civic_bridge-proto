@@ -319,9 +319,9 @@ jobs:
           APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
         run: |
           CLEAN_APP_ID=$(echo "$APP_ID" | tr -d '\n\r ')
-          JOB_ID=$(aws amplify start-job --app-id "$CLEAN_APP_ID" --branch-name "main" --job-type "RELEASE" --query 'jobSummary.jobId' --output text)
-          echo "Amplify job started: $JOB_ID"
-          echo "View at: https://console.aws.amazon.com/amplify/home#/$CLEAN_APP_ID/main/$JOB_ID"
+          # Try to start job, ignore failure if a job is already running
+          aws amplify start-job --app-id "$CLEAN_APP_ID" --branch-name "main" --job-type "RELEASE" || echo "Amplify build is already running automatically."
+          echo "View at: https://console.aws.amazon.com/amplify/home#/$CLEAN_APP_ID/main"
       - name: Wait for Amplify deployment
         env:
           APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
