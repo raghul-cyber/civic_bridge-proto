@@ -55,13 +55,7 @@ const Submit = () => {
         }, 2000);
     };
 
-    // Callback from VoiceButton
-    const handleVoiceTranscript = (data) => {
-        // If final transcript is sent from voice
-        if (data.final) {
-            handleSendMessage(data.final);
-        }
-    };
+
 
     const handleSubmit = async () => {
         setIsSubmitted(true);

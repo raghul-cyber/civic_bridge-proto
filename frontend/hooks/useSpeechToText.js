@@ -15,6 +15,16 @@ export function useSpeechToText() {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
 
+    const stopListening = useCallback(() => {
+        setIsListening(false);
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+    }, []);
+
     // Initialize Web Speech API
     const initSpeechRecognition = useCallback(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -45,7 +55,7 @@ export function useSpeechToText() {
             return recognition;
         }
         return null;
-    }, []);
+    }, [stopListening]);
 
     // Fallback: Upload Audio Blob to Backend
     const processFallaudio = async (blob, language = 'en-US') => {
@@ -116,15 +126,7 @@ export function useSpeechToText() {
         }
     };
 
-    const stopListening = () => {
-        setIsListening(false);
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
-        }
-    };
+    // The stopListening is now declared at the top
 
     return {
         transcript,
