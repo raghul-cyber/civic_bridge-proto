@@ -20,7 +20,7 @@ const Navbar = () => {
 
     useEffect(() => {
         const handleLoginSuccess = (e) => {
-            showToast({ title: 'Login Successful', message: `Welcome back, ${e.detail}!`, type: 'success' });
+            showToast({ title: 'Success', message: 'YOU ARE LOGGED SUCCESSFULLY', type: 'success' });
         };
         const handleLoginError = (e) => {
             showToast({ title: 'Login Failed', message: e.detail, type: 'error' });
@@ -143,8 +143,8 @@ const Navbar = () => {
                                         <User className="w-4 h-4 text-[var(--accent-cyan)]" />
                                     </div>
                                 )}
-                                <span className="text-sm font-medium text-white max-w-[100px] truncate">
-                                    {user?.name || 'My Account'}
+                                <span className="text-sm font-medium text-white max-w-[150px] truncate">
+                                    {user?.email || 'My Account'}
                                 </span>
                                 <ChevronDown className={cn("w-3 h-3 text-gray-400 transition-transform", isProfileOpen && "rotate-180")} />
                             </button>
