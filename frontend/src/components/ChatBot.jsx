@@ -1,277 +1,556 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, User, Send, Keyboard, Cloud, Leaf, Flag, Coins, Users, AlertCircle, Volume2, Square, Mic, Loader2 } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { useLanguage, LANGUAGES } from '../context/LanguageContext';
-import useVoice from '../hooks/useVoice';
-import api from '../lib/api';
+import { Mic, MicOff, Send, Volume2, VolumeX, Map as MapIcon, X, Info, AlertTriangle, Loader, CheckCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../context/LanguageContext';
+import { useVoice } from '../hooks/useVoice';
+import { speakIndian } from '../utils/speakIndian';
+import LanguageSelector from './LanguageSelector';
 
-const initialWelcomeMessage = {
-    role: 'bot',
-    content: 'Hello! I am your CivicBridge AI. Ask me about weather, air quality, civic issues, city budget, or population data. I understand English, Hindi, and Tamil!',
-    id: 'welcome'
+// Lazy load IndiaMap to avoid heavy bundle if not used immediately
+const IndiaMap = React.lazy(() => import('./IndiaMap'));
+
+/* ────────────────────────────────────────────────────────────
+   1. WEATHER CARD
+   ──────────────────────────────────────────────────────────── */
+const WeatherCard = ({ data, city }) => {
+    if (!data) return null;
+    return (
+        <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/20 rounded-2xl p-5 w-[300px] text-white shadow-xl">
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <h3 className="text-xl font-bold" style={{ fontFamily: '"Clash Display", sans-serif' }}>{city}</h3>
+                    <p className="text-sm text-blue-200">{data.description || 'Sunny'}</p>
+                </div>
+                <div className="text-4xl font-bold" style={{ fontFamily: '"Clash Display", sans-serif' }}>
+                    {data.temp_c}°C
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-white/5 rounded-lg p-2 flex flex-col items-center border border-white/5">
+                    <span className="text-blue-300 text-xs">Humidity</span>
+                    <span className="font-semibold">{data.humidity}%</span>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 flex flex-col items-center border border-white/5">
+                    <span className="text-blue-300 text-xs">Wind</span>
+                    <span className="font-semibold">{data.wind_kmph} km/h</span>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 flex flex-col items-center border border-white/5">
+                    <span className="text-blue-300 text-xs">UV Index</span>
+                    <span className="font-semibold">{data.uv_index || 0}</span>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 flex flex-col items-center border border-white/5">
+                    <span className="text-blue-300 text-xs">Feels Like</span>
+                    <span className="font-semibold">{data.feels_like}°C</span>
+                </div>
+            </div>
+        </div>
+    );
 };
 
-const ChatBot = () => {
-    const [messages, setMessages] = useState([initialWelcomeMessage]);
-    const [inputText, setInputText] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+/* ────────────────────────────────────────────────────────────
+   2. AQI CARD
+   ──────────────────────────────────────────────────────────── */
+const AQICard = ({ data }) => {
+    if (!data) return null;
+    // Get main AQI value (using pm2.5 as proxy if overall 'aqi' is missing)
+    const valText = data.aqi || data.pm25 || data['pm2.5'] || '50';
+    const val = parseInt(String(valText).replace(/[^0-9]/g, ''), 10) || 50;
+
+    let color = '#22C55E'; let status = 'Good';
+    if (val > 50) { color = '#EAB308'; status = 'Moderate'; }
+    if (val > 100) { color = '#F97316'; status = 'Poor'; }
+    if (val > 200) { color = '#EF4444'; status = 'Very Poor'; }
+    if (val > 300) { color = '#7C3AED'; status = 'Severe'; }
+
+    return (
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 w-[300px] text-white">
+            <div className="flex items-center gap-4 mb-4">
+                {/* Simple Ring Gauge */}
+                <div className="relative w-20 h-20 flex-shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-700" />
+                        <circle cx="50" cy="50" r="40" stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={`${Math.min(val / 5, 100) * 2.51} 251.2`} />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-xl font-bold" style={{ color }}>{val}</span>
+                        <span className="text-[10px] text-gray-400">AQI</span>
+                    </div>
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold" style={{ color }}>{status}</h3>
+                    <p className="text-xs text-gray-400 mt-1">Status as per national standards</p>
+                </div>
+            </div>
+            <div className="flex gap-2 justify-center">
+                {Object.entries(data).slice(0, 3).map(([k, v]) => {
+                    if (k === 'source') return null;
+                    return (
+                        <div key={k} className="px-2 py-1 bg-black/40 rounded border border-white/10 text-xs">
+                            <span className="text-gray-400 capitalize">{k.replace('.', '')}</span> {String(v).substring(0, 8)}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+/* ────────────────────────────────────────────────────────────
+   3. LAW CARD
+   ──────────────────────────────────────────────────────────── */
+const LawCard = ({ data }) => {
+    if (!data || !data.results || data.results.length === 0) return null;
+    const doc = data.results[0]; // main result
+    return (
+        <div className="bg-[#111] border border-yellow-600/30 rounded-2xl p-4 w-[320px] text-white shadow-lg">
+            <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">Legal Reference</span>
+            </div>
+            <h4 className="text-sm font-bold text-cyan-300 bg-cyan-900/30 px-2 py-1 rounded inline-block mb-2">
+                {doc.title.substring(0, 50)}...
+            </h4>
+            <p className="text-xs text-gray-300 mb-3 line-clamp-4" dangerouslySetInnerHTML={{ __html: doc.headline }}></p>
+            <a href={`https://indiankanoon.org/doc/${doc.tid}/`} target="_blank" rel="noreferrer"
+                className="text-yellow-500 text-xs hover:underline flex items-center gap-1 font-semibold">
+                View on IndiaKanoon <span aria-hidden="true">→</span>
+            </a>
+        </div>
+    );
+};
+
+/* ────────────────────────────────────────────────────────────
+   4. SCHEME CARD
+   ──────────────────────────────────────────────────────────── */
+const SchemeCard = ({ schemes }) => {
+    if (!schemes || schemes.length === 0) return null;
+    const s = schemes[0];
+    return (
+        <div className="bg-gradient-to-br from-green-900/30 to-teal-900/30 border border-green-500/30 rounded-2xl p-4 w-[320px] text-white">
+            <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 flex-shrink-0">
+                    <Info className="w-5 h-5" />
+                </div>
+                <div>
+                    <h4 className="font-bold text-sm leading-snug">{s.basicDetails?.schemeName || 'Govt Scheme'}</h4>
+                    <span className="text-[10px] text-green-300 uppercase tracking-wider">{s.basicDetails?.nodalMinistryName}</span>
+                </div>
+            </div>
+            <p className="text-xs text-gray-300 line-clamp-3 mb-4">{s.basicDetails?.schemeDescription}</p>
+            <div className="flex gap-2">
+                <button className="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-2 rounded-lg transition-colors">
+                    Apply Now
+                </button>
+            </div>
+        </div>
+    );
+};
+
+/* ────────────────────────────────────────────────────────────
+   5. MANDI CARD
+   ──────────────────────────────────────────────────────────── */
+const MandiCard = ({ data }) => {
+    if (!data || !data.prices || data.prices.length === 0) return null;
+    const item = data.prices[0];
+    return (
+        <div className="bg-[#1f1d10] border border-amber-500/30 rounded-2xl p-4 w-[300px] text-white">
+            <div className="flex justify-between items-center mb-3">
+                <h4 className="font-bold text-amber-500 capitalize flex items-center gap-2">
+                    <span>🌾</span> {item.commodity}
+                </h4>
+                <span className="text-[10px] bg-amber-900/40 text-amber-300 px-2 py-1 rounded">{item.arrival_date}</span>
+            </div>
+            <div className="text-sm font-medium mb-1">{item.market}, {item.state}</div>
+            <div className="grid grid-cols-3 gap-2 mt-3">
+                <div className="bg-black/40 rounded p-2 text-center">
+                    <div className="text-[10px] text-gray-500">Min</div>
+                    <div className="text-xs font-bold font-mono">₹{item.min_price}</div>
+                </div>
+                <div className="bg-amber-900/20 rounded p-2 text-center border border-amber-500/20">
+                    <div className="text-[10px] text-amber-400">Modal</div>
+                    <div className="text-sm font-bold text-amber-500 font-mono">₹{item.modal_price}</div>
+                </div>
+                <div className="bg-black/40 rounded p-2 text-center">
+                    <div className="text-[10px] text-gray-500">Max</div>
+                    <div className="text-xs font-bold font-mono">₹{item.max_price}</div>
+                </div>
+            </div>
+            <div className="text-center text-[10px] text-gray-500 mt-2">Prices in Rs/Quintal</div>
+        </div>
+    );
+};
+
+/* ────────────────────────────────────────────────────────────
+   6. ISSUES CARD
+   ──────────────────────────────────────────────────────────── */
+const IssuesCard = ({ data, onShowMap }) => {
+    if (!data || !data.issues) return null;
+    const count = data.count || data.issues.length;
+    return (
+        <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-2xl p-4 w-[320px] text-white">
+            <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-cyan-400" />
+                <h4 className="text-sm font-bold">{count} Open Issues Found</h4>
+            </div>
+            <div className="space-y-2 mb-4">
+                {data.issues.slice(0, 3).map((issue, idx) => (
+                    <div key={idx} className="bg-black/30 rounded px-3 py-2 flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${issue.priority === 'High' ? 'bg-red-500' : 'bg-yellow-500'
+                            }`} />
+                        <div className="truncate">
+                            <div className="text-xs font-semibold truncate">{issue.title || 'Civic Issue'}</div>
+                            <div className="text-[10px] text-cyan-400">{issue.category || 'General'}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <button
+                onClick={onShowMap}
+                className="w-full bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 text-xs font-bold py-2 rounded-lg transition-colors border border-cyan-500/30 flex justify-center items-center gap-2">
+                <MapIcon className="w-3 h-3" /> See on Map
+            </button>
+        </div>
+    );
+};
+
+
+/* ────────────────────────────────────────────────────────────
+   MAIN CHATBOT COMPONENT
+   ──────────────────────────────────────────────────────────── */
+export default function ChatBot() {
+    const { user, token, logout } = useAuth();
+    const { language, setLanguage, INDIAN_LANGUAGES } = useLanguage();
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState('');
+    const [isTyping, setIsTyping] = useState(false);
+    const [autoSpeak, setAutoSpeak] = useState(() => localStorage.getItem('cb_autoSpeak') !== 'false');
     const [isSpeaking, setIsSpeaking] = useState(false);
 
-    const { language, setLanguage } = useLanguage();
+    // Modals / Maps
+    const [showFullMap, setShowFullMap] = useState(false);
+    const [mapMarkers, setMapMarkers] = useState([]);
+
     const messagesEndRef = useRef(null);
 
-    const { isListening, error: voiceError, isSupported: isVoiceSupported, startListening, stopListening } = useVoice({
+    // Voice Hook Integration 
+    const {
+        isListening, transcript, error: voiceError, startListening, stopListening, isSupported
+    } = useVoice({
         language: language.code,
-        onTranscript: (transcript) => {
-            if (transcript && transcript.trim()) {
-                setInputText(transcript);
-                sendMessage(transcript);
+        onTranscript: (t) => {
+            // Auto-send fully recognized transcript after short delay
+            if (t.trim()) {
+                setInput(t);
+                setTimeout(() => handleSend(t), 800);
             }
         }
     });
 
+    // Welcome Message Initialization
+    useEffect(() => {
+        if (messages.length === 0) {
+            setMessages([{
+                id: 'welcome',
+                role: 'bot',
+                type: 'welcome',
+                lang: language.code
+            }]);
+        }
+    }, [language.code, messages.length]);
+
+    // Scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isSpeaking, voiceError]);
+    }, [messages, isTyping, transcript]);
 
-    const speakWhenReady = (text, langCode) => {
-        if (!window.speechSynthesis) return;
-
-        window.speechSynthesis.cancel();
-
-        const trySpeak = () => {
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length > 0) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                const lang = langCode || 'en-US';
-                utterance.lang = lang;
-                utterance.rate = 0.9;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-
-                const voice = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
-                if (voice) utterance.voice = voice;
-
-                utterance.onstart = () => setIsSpeaking(true);
-                utterance.onend = () => setIsSpeaking(false);
-                utterance.onerror = () => setIsSpeaking(false);
-
-                window.speechSynthesis.speak(utterance);
-            } else {
-                window.speechSynthesis.onvoiceschanged = () => trySpeak();
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Ctrl+M: Toggle Mic
+            if (e.ctrlKey && e.key.toLowerCase() === 'm') {
+                e.preventDefault();
+                isListening ? stopListening() : startListening();
+            }
+            // Ctrl+L: Clear Chat
+            if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+                e.preventDefault();
+                setMessages([]);
+            }
+            // Esc: Stop speaking
+            if (e.key === 'Escape' && isSpeaking) {
+                window.speechSynthesis?.cancel();
+                setIsSpeaking(false);
             }
         };
-        trySpeak();
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isListening, startListening, stopListening, isSpeaking]);
+
+    const toggleAutoSpeak = () => {
+        const next = !autoSpeak;
+        setAutoSpeak(next);
+        localStorage.setItem('cb_autoSpeak', String(next));
+        if (!next) window.speechSynthesis?.cancel();
     };
 
-    const stopSpeaking = () => {
-        if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-        }
-        setIsSpeaking(false);
-    };
+    const handleSend = async (textToSend = input) => {
+        if (!textToSend.trim()) return;
 
-    const sendMessage = async (text) => {
-        if (!text.trim()) return;
-
-        const userMessageId = Date.now();
-        setMessages(prev => [...prev, { role: 'user', content: text, id: userMessageId }]);
-        setInputText('');
-        setIsLoading(true);
-
-        // Add typing indicator
-        setMessages(prev => [...prev, { role: 'bot', content: '', id: 'typing', isTyping: true }]);
+        const userMsg = { id: Date.now().toString(), role: 'user', content: textToSend };
+        setMessages(prev => [...prev, userMsg]);
+        setInput('');
+        if (isListening) stopListening();
+        setIsTyping(true);
 
         try {
-            const data = await api.post('/api/chat', {
-                message: text,
-                language: language.code,
-                city: 'New Delhi',
-                session_id: sessionStorage.getItem('chat_session') || ''
+            const res = await fetch('http://localhost:8000/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                body: JSON.stringify({
+                    message: textToSend,
+                    city: localStorage.getItem('cb_city') || 'Mumbai',
+                    language: language.code
+                })
             });
 
-            // Auto-switch language if backend detected different language
-            if (data.detected_language && data.detected_language !== language.code) {
-                const detected = LANGUAGES.find(l => l.code === data.detected_language);
-                if (detected) setLanguage(detected);
+            if (res.status === 401) {
+                setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', content: 'Session expired. Please sign in again.' }]);
+                setTimeout(logout, 2000);
+                return;
             }
 
-            // Remove typing indicator, add real reply
-            setMessages(prev => [
-                ...prev.filter(m => m.id !== 'typing'),
-                {
-                    role: 'bot',
-                    content: data.reply,
-                    id: Date.now(),
-                    intent: data.intent,
-                    detectedLang: data.detected_language
-                }
-            ]);
+            if (!res.ok) throw new Error('Network response was not ok');
 
-            // Speak the reply
-            if (data.speak && data.reply) {
-                speakWhenReady(data.reply, data.detected_language || language.code);
+            const data = await res.json();
+
+            // Auto-switch language if backend detected a different one
+            if (data.detected_language && data.detected_language !== language.code) {
+                const matched = INDIAN_LANGUAGES.find(l => l.code === data.detected_language);
+                if (matched) setLanguage(matched);
+            }
+
+            const botMsg = {
+                id: Date.now().toString() + 'b',
+                role: 'bot',
+                content: data.reply,
+                intent: data.intent,
+                data: data.data,
+                map_markers: data.map_markers || [],
+                suggestions: data.suggestions || [],
+                lang: data.detected_language || language.code
+            };
+
+            setMessages(prev => [...prev, botMsg]);
+
+            // Auto-speak response
+            if (autoSpeak && data.reply) {
+                setIsSpeaking(true);
+                speakIndian(data.reply, data.detected_language || language.code, {
+                    onEnd: () => setIsSpeaking(false)
+                });
             }
 
         } catch (err) {
-            setMessages(prev => [
-                ...prev.filter(m => m.id !== 'typing'),
-                {
-                    role: 'bot',
-                    content: 'Sorry, I could not connect to the server. Please try again.',
-                    id: Date.now(),
-                    isError: true
-                }
-            ]);
+            console.error(err);
+            setMessages(prev => [...prev, {
+                id: Date.now().toString(), role: 'error',
+                content: 'Server offline or taking too long. Please check connection.'
+            }]);
         } finally {
-            setIsLoading(false);
+            setIsTyping(false);
         }
     };
 
-    const getIntentBadge = (intent) => {
-        switch (intent) {
-            case 'weather':
-                return <span className="flex items-center gap-1 text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20"><Cloud className="w-3 h-3" /> Weather</span>;
-            case 'air_quality':
-            case 'air':
-                return <span className="flex items-center gap-1 text-[10px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full border border-green-500/20"><Leaf className="w-3 h-3" /> Air Quality</span>;
-            case 'issues':
-                return <span className="flex items-center gap-1 text-[10px] bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/20"><Flag className="w-3 h-3" /> Civic Issue</span>;
-            case 'budget':
-                return <span className="flex items-center gap-1 text-[10px] bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded-full border border-yellow-500/20"><Coins className="w-3 h-3" /> City Budget</span>;
-            case 'census':
-                return <span className="flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/20"><Users className="w-3 h-3" /> Census Data</span>;
-            default:
-                return null;
-        }
-    };
-
-    // Quick chips logic based on current language
-    const getQuickChips = () => {
-        if (language.code === 'hi-IN') {
-            return ['Delhi vayu guna', 'Mumbai bajat', 'Bangalore traffic', 'Nagarik samasya', 'Crime stats'];
-        } else if (language.code === 'ta-IN') {
-            return ['Chennai vanilam', 'Delhi kaatrru', 'Bangalore nerisal', 'Nagar bajett', 'Makkal thokai'];
-        }
-        return ['Delhi AQI', 'Mumbai Budget', 'Bangalore Traffic', 'Recent issues', 'Crime stats'];
-    };
+    const currentSuggestions = messages.length > 0 && messages[messages.length - 1].suggestions
+        ? messages[messages.length - 1].suggestions
+        : ['Check Air Quality', 'Report Pothole', 'Learn About RTI', 'Mandi Prices'];
 
     return (
-        <div className="flex flex-col h-full bg-[#0b101e] rounded-3xl overflow-hidden border border-[var(--border)] relative shadow-2xl">
-            {/* Header / Stop Speaking Overlay */}
-            <AnimatePresence>
-                {isSpeaking && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="absolute top-0 left-0 right-0 z-20 flex justify-center p-3"
-                    >
-                        <button
-                            onClick={stopSpeaking}
-                            className="glass flex items-center gap-2 px-4 py-2 rounded-full border border-red-500/30 text-white text-sm shadow-xl hover:bg-red-500/10 hover:border-red-500/50 transition-all font-medium"
-                        >
-                            <Square className="w-4 h-4 fill-red-500 text-red-500" />
-                            Stop Speaking
-                        </button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+        <div className="flex flex-col h-[calc(100vh-64px)] bg-[#0a0f1d] font-sans overflow-hidden">
 
-            <div className="p-4 border-b border-white/10 bg-black/40 flex items-center justify-between shrink-0">
+            {/* ────────────────────────────────────────────────────────────
+          CHAT HEADER
+          ──────────────────────────────────────────────────────────── */}
+            <div className="flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-md border-b border-white/10 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--accent-cyan)]/20 flex items-center justify-center text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/30 shadow-[0_0_15px_rgba(0,212,255,0.2)]">
-                        <Bot className="w-5 h-5" />
+                    <div className="relative">
+                        <div className="w-10 h-10 bg-cyan-900/50 border border-cyan-400/50 rounded-xl flex items-center justify-center">
+                            <svg className="w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-[#0a0f1d] rounded-full"></div>
                     </div>
                     <div>
-                        <h3 className="text-white font-bold font-display text-sm tracking-wide">CivicBridge AI</h3>
-                        <p className="text-[10px] text-[var(--caption)] uppercase tracking-widest text-[var(--accent-cyan)] flex items-center gap-1 font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-cyan)] animate-pulse shadow-[0_0_5px_rgba(0,212,255,0.8)]" />
-                            Online & Active
-                        </p>
+                        <h1 className="text-white font-bold" style={{ fontFamily: '"Clash Display", sans-serif' }}>CivicBridge AI</h1>
+                        <div className="flex items-center gap-1.5 text-[10px] text-green-400 font-bold tracking-wider">
+                            ONLINE & ACTIVE
+                        </div>
                     </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={toggleAutoSpeak}
+                        className={`p-2 rounded-lg transition-colors ${autoSpeak ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}
+                        title="Toggle Auto Speak"
+                    >
+                        {autoSpeak ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                    </button>
+
+                    <button
+                        onClick={() => { setMessages([]); window.speechSynthesis?.cancel(); }}
+                        className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
+                        title="Clear Chat (Ctrl+L)"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
 
-            {/* Messages Feed */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10 pb-4">
-                {messages.map((msg) => {
-                    if (msg.role === 'user') {
-                        return (
-                            <div key={msg.id} className="flex gap-3 max-w-[85%] ml-auto flex-row-reverse">
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border bg-white/10 border-white/20 text-white shadow-lg">
-                                    <User className="w-4 h-4" />
+            <div className="bg-black/20 border-b border-white/5">
+                <LanguageSelector />
+            </div>
+
+            {/* ────────────────────────────────────────────────────────────
+          MESSAGES AREA
+          ──────────────────────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 space-y-6 scrollbar-hide">
+                <AnimatePresence initial={false}>
+                    {messages.map((msg, index) => (
+                        <motion.div
+                            key={msg.id}
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                            {msg.role === 'bot' && (
+                                <div className="w-8 h-8 rounded-lg bg-cyan-900/50 border border-cyan-500/30 flex items-center justify-center mr-3 mt-1 shrink-0">
+                                    <span className="text-cyan-400 text-xs font-bold">AI</span>
                                 </div>
-                                <div className="p-4 bg-[#1a2744] text-white rounded-2xl rounded-tr-sm shadow-md text-sm leading-relaxed whitespace-pre-wrap">
-                                    {msg.content}
-                                </div>
+                            )}
+
+                            <div className={`max-w-[85%] md:max-w-[70%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-2`}>
+
+                                {/* Regular Text Bubble */}
+                                {msg.type !== 'welcome' && msg.role !== 'error' && (
+                                    <div className={`px-4 py-3 rounded-2xl ${msg.role === 'user'
+                                            ? 'bg-cyan-600 text-white rounded-br-none shadow-lg shadow-cyan-900/20'
+                                            : 'bg-white/10 text-gray-100 rounded-bl-none border border-white/10'
+                                        }`}>
+                                        {msg.content}
+                                    </div>
+                                )}
+
+                                {/* Multilingual Welcome Bubble */}
+                                {msg.type === 'welcome' && (
+                                    <div className="px-5 py-4 rounded-2xl bg-white/10 text-gray-100 rounded-bl-none border border-white/10 flex flex-col gap-2 shadow-xl">
+                                        <p className="font-semibold text-lg text-amber-400">Namaste! Main aapka CivicBridge AI hoon.</p>
+                                        <p className="font-medium text-cyan-300">Vanakkam! Naan CivicBridge AI.</p>
+                                        <p className="text-gray-300 text-sm">Hello! Ask me anything about India's civic data, weather, laws, or report an issue.</p>
+                                    </div>
+                                )}
+
+                                {/* Error Bubble */}
+                                {msg.role === 'error' && (
+                                    <div className="px-4 py-3 rounded-2xl bg-red-900/50 text-red-200 border border-red-500/30 rounded-bl-none flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4" />
+                                        <span className="text-sm">{msg.content}</span>
+                                    </div>
+                                )}
+
+                                {/* Rich Cards based on intent */}
+                                {msg.role === 'bot' && msg.intent && msg.data && (
+                                    <div className="mt-1">
+                                        {msg.intent === 'weather' && <WeatherCard data={msg.data} city={localStorage.getItem('cb_city') || 'Delhi'} />}
+                                        {msg.intent === 'air_quality' && <AQICard data={msg.data} />}
+                                        {msg.intent === 'law' && <LawCard data={msg.data} />}
+                                        {msg.intent === 'budget' && <SchemeCard schemes={msg.data} />}
+                                        {msg.intent === 'agriculture' && <MandiCard data={msg.data?.prices ? msg.data : { prices: msg.data }} />}
+                                        {msg.intent === 'civic_issues' && (
+                                            <IssuesCard
+                                                data={msg.data}
+                                                onShowMap={() => { setMapMarkers(msg.map_markers || []); setShowFullMap(true); }}
+                                            />
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Mini Map Inline */}
+                                {msg.role === 'bot' && msg.map_markers?.length > 0 && msg.intent !== 'civic_issues' && (
+                                    <div className="mt-2 bg-black/50 border border-white/10 rounded-xl overflow-hidden shadow-lg w-[300px]">
+                                        <div className="h-[150px] w-full relative">
+                                            <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-500"><Loader className="animate-spin" /></div>}>
+                                                <IndiaMap
+                                                    markers={msg.map_markers}
+                                                    showUserLocation={false}
+                                                    height="150px"
+                                                    activeToggle="Civic Issues"
+                                                />
+                                            </Suspense>
+                                        </div>
+                                        <button
+                                            onClick={() => { setMapMarkers(msg.map_markers); setShowFullMap(true); }}
+                                            className="w-full py-2 text-xs font-bold text-cyan-400 bg-cyan-900/20 hover:bg-cyan-900/40 transition-colors"
+                                        >
+                                            View Full Map
+                                        </button>
+                                    </div>
+                                )}
+
                             </div>
-                        );
-                    } else {
-                        // Bot bubble logic
-                        return (
-                            <div key={msg.id} className="flex gap-3 max-w-[85%] relative group">
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border bg-[var(--accent-cyan)]/20 border-[var(--accent-cyan)]/30 text-[var(--accent-cyan)] shadow-lg pt-[1px]">
-                                    <Bot className="w-4 h-4" />
-                                </div>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
 
-                                <div className="flex flex-col gap-1.5 min-w-0">
-                                    {msg.isTyping ? (
-                                        <div className="p-4 glass text-white rounded-2xl rounded-tl-sm w-20 flex items-center justify-center gap-1.5 h-[52px]">
-                                            <div className="w-2 h-2 rounded-full bg-[var(--accent-cyan)] animate-bounce" style={{ animationDelay: '0s' }}></div>
-                                            <div className="w-2 h-2 rounded-full bg-[var(--accent-cyan)] animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                                            <div className="w-2 h-2 rounded-full bg-[var(--accent-cyan)] animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                                        </div>
-                                    ) : msg.isError ? (
-                                        <div className="p-4 glass text-white rounded-2xl rounded-tl-sm border-red-500/50 flex gap-2 items-start text-sm">
-                                            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-                                            <span className="text-red-200">{msg.content}</span>
-                                        </div>
-                                    ) : (
-                                        <div className="p-4 glass text-white rounded-2xl rounded-tl-sm shadow-[0_4px_20px_rgba(0,212,255,0.03)] text-sm leading-relaxed whitespace-pre-wrap relative border border-[var(--border)] group-hover:border-[var(--accent-cyan)]/20 transition-colors">
-                                            {msg.content}
-
-                                            {/* Speaking Waveform Indicator (only on bottom-most bot msg if speaking) */}
-                                            {isSpeaking && messages[messages.length - 1]?.id === msg.id && (
-                                                <div className="absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/5">
-                                                    <Volume2 className="w-3 h-3 text-[var(--accent-cyan)]" />
-                                                    <div className="flex items-end gap-[1px] h-3">
-                                                        <motion.div animate={{ height: ['30%', '100%', '40%'] }} transition={{ duration: 0.5, repeat: Infinity, ease: 'easeInOut' }} className="w-0.5 bg-[var(--accent-cyan)] rounded-t-sm" />
-                                                        <motion.div animate={{ height: ['60%', '30%', '90%'] }} transition={{ duration: 0.5, delay: 0.1, repeat: Infinity, ease: 'easeInOut' }} className="w-0.5 bg-[var(--accent-cyan)] rounded-t-sm" />
-                                                        <motion.div animate={{ height: ['80%', '50%', '30%'] }} transition={{ duration: 0.5, delay: 0.2, repeat: Infinity, ease: 'easeInOut' }} className="w-0.5 bg-[var(--accent-cyan)] rounded-t-sm" />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Intent Badge */}
-                                    {msg.intent && !msg.isError && (
-                                        <div className="flex pl-1">
-                                            {getIntentBadge(msg.intent)}
-                                        </div>
-                                    )}
-                                </div>
+                {/* Typing Indicator */}
+                {isTyping && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+                        <div className="w-8 h-8 rounded-lg bg-cyan-900/30 border border-cyan-500/20 flex items-center justify-center mr-3 shrink-0">
+                            <Loader className="w-4 h-4 text-cyan-400 animate-spin" />
+                        </div>
+                        <div className="px-4 py-3 rounded-2xl bg-white/5 rounded-bl-none border border-white/5 flex items-center gap-2 text-gray-400 text-sm">
+                            <div className="flex gap-1">
+                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                             </div>
-                        );
-                    }
-                })}
+                            <span>Thinking in {language.name}...</span>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Stop Speaking Button overlay if active */}
+                {isSpeaking && (
+                    <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-50">
+                        <button
+                            onClick={() => { window.speechSynthesis?.cancel(); setIsSpeaking(false); }}
+                            className="bg-black/80 backdrop-blur-md border border-red-500/50 text-red-400 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl hover:bg-red-900/50"
+                        >
+                            <VolumeX className="w-4 h-4" /> Stop Audio
+                        </button>
+                    </div>
+                )}
+
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 bg-black/40 border-t border-[var(--border)] shrink-0 flex flex-col gap-3">
-                {/* Quick Suggestion Chips */}
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                    {getQuickChips().map((chip, idx) => (
+            {/* ────────────────────────────────────────────────────────────
+          INPUT AREA & CHIPS
+          ──────────────────────────────────────────────────────────── */}
+            <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#0a0f1d] via-[#0a0f1d] to-transparent pt-10 pb-4 px-4 md:px-8">
+
+                {/* Suggestion Chips */}
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-3 pb-1">
+                    {currentSuggestions.map((chip, idx) => (
                         <button
                             key={idx}
-                            onClick={() => {
-                                setInputText(chip);
-                                sendMessage(chip);
-                            }}
-                            className="whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white hover:bg-white/10 hover:border-[var(--accent-cyan)]/30 transition-colors shrink-0"
+                            onClick={() => handleSend(chip)}
+                            className="px-4 py-1.5 bg-white/5 hover:bg-cyan-900/30 border border-white/10 hover:border-cyan-500/30 text-cyan-100 text-xs rounded-full whitespace-nowrap transition-all flex-shrink-0"
                         >
                             {chip}
                         </button>
@@ -279,70 +558,87 @@ const ChatBot = () => {
                 </div>
 
                 {/* Input Bar */}
-                <div className="flex items-center gap-2 w-full relative">
-                    <button className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[var(--text-muted)] hover:text-white transition-colors shrink-0 hidden sm:flex">
-                        <Keyboard className="w-5 h-5" />
-                    </button>
-
+                <div className="relative flex items-center bg-white/5 border border-white/10 rounded-full p-1.5 shadow-2xl backdrop-blur-xl">
                     <input
                         type="text"
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && sendMessage(inputText)}
-                        placeholder={isListening ? "Listening..." : "Ask about weather, air quality, civic issues..."}
-                        className={cn(
-                            "flex-1 h-12 bg-[#111827] border border-[rgba(255,255,255,0.08)] text-white rounded-xl pl-4 text-sm outline-none placeholder:text-gray-500 transition-all",
-                            isVoiceSupported ? "pr-[5.5rem]" : "pr-12",
-                            isListening ? "border-[var(--accent-cyan)]/50 ring-1 ring-[var(--accent-cyan)]/30 bg-[#111827]/80" : "focus:border-[var(--accent-cyan)]/50 focus:ring-1 focus:ring-[var(--accent-cyan)]/50"
-                        )}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                        placeholder={isListening ? 'Listening...' : `Ask anything in ${language.name}...`}
+                        className="flex-1 bg-transparent text-white px-4 py-3 outline-none placeholder-gray-500 text-sm md:text-base"
+                        disabled={isListening}
                     />
 
-                    {/* Compact Voice Button directly inside ChatBot */}
-                    {isVoiceSupported && (
-                        <div className="absolute right-[52px] top-1/2 -translate-y-1/2">
-                            <button
-                                onClick={() => isListening ? stopListening() : startListening()}
-                                disabled={isLoading}
-                                className={cn(
-                                    "relative z-50 flex items-center justify-center w-10 h-10 rounded-full border transition-all cursor-pointer",
-                                    isListening ? "bg-[var(--accent-cyan)] border-white/20 shadow-[0_0_15px_var(--accent-cyan)]/50" : "bg-transparent border-[var(--accent-cyan)] text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)] hover:text-black",
-                                    isLoading && "opacity-50 pointer-events-none grayscale"
-                                )}
-                                title="Voice Input"
-                            >
-                                {/* Pulsing ring while listening */}
-                                {isListening && (
-                                    <motion.div
-                                        initial={{ scale: 1, opacity: 1 }}
-                                        animate={{ scale: 1.5, opacity: 0 }}
-                                        transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
-                                        className="absolute inset-0 rounded-full border border-[var(--accent-cyan)]"
-                                    />
-                                )}
-                                <Mic className={cn("w-[18px] h-[18px]", isListening ? "text-slate-900" : "currentColor")} />
-                            </button>
+                    {/* Interim transcript display overlay inside input */}
+                    {transcript && input === '' && (
+                        <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 italic pointer-events-none truncate max-w-[60%] text-sm">
+                            {transcript}
                         </div>
                     )}
 
-                    <button
-                        onClick={() => sendMessage(inputText)}
-                        disabled={!inputText.trim() || isLoading}
-                        className="absolute right-1 top-1 w-10 h-10 rounded-lg bg-[var(--accent-cyan)] text-black flex items-center justify-center disabled:opacity-50 disabled:bg-gray-600 disabled:text-gray-400 transition-colors hover:scale-105 active:scale-95 z-50"
-                    >
-                        <Send className="w-4 h-4 ml-0.5" />
-                    </button>
+                    <div className="flex items-center gap-1 pr-1">
+                        {/* Voice Mic Button */}
+                        {isSupported && (
+                            <button
+                                onClick={isListening ? stopListening : startListening}
+                                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isListening
+                                        ? 'bg-cyan-400 text-black shadow-[0_0_20px_rgba(34,211,238,0.5)] animate-pulse'
+                                        : voiceError
+                                            ? 'border-2 border-red-500 text-red-500 bg-red-900/20'
+                                            : 'border border-cyan-400/50 text-cyan-400 hover:bg-cyan-900/30'
+                                    }`}
+                                title={voiceError || (isListening ? 'Stop Listening' : 'Use Voice (Ctrl+M)')}
+                            >
+                                {voiceError ? <X className="w-5 h-5" /> : isListening ? <Mic className="w-5 h-5 animate-bounce" /> : <Mic className="w-5 h-5" />}
+                            </button>
+                        )}
+
+                        {/* Send Button */}
+                        <button
+                            onClick={() => handleSend()}
+                            disabled={!input.trim() || isTyping || isListening}
+                            className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${input.trim() && !isTyping && !isListening
+                                    ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg'
+                                    : 'bg-white/5 text-gray-500 cursor-not-allowed'
+                                }`}
+                        >
+                            <Send className="w-4 h-4 translate-x-px translate-y-px" />
+                        </button>
+                    </div>
                 </div>
-                {/* Voice Error Display below input */}
-                <AnimatePresence>
-                    {voiceError && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-400 text-[11px] px-2 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" /> {voiceError.message}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+
+                {/* Voice Error Note */}
+                {voiceError && (
+                    <div className="text-center mt-2 text-xs text-red-400 animate-pulse">{voiceError}</div>
+                )}
             </div>
+
+            {/* ────────────────────────────────────────────────────────────
+          FULL MAP MODAL
+          ──────────────────────────────────────────────────────────── */}
+            <AnimatePresence>
+                {showFullMap && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex flex-col p-4 md:p-8"
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <MapIcon className="text-cyan-400" /> Civic Map View
+                            </h2>
+                            <button onClick={() => setShowFullMap(false)} className="p-2 bg-white/10 hover:bg-red-500/20 text-white rounded-full">
+                                <X />
+                            </button>
+                        </div>
+                        <div className="flex-1 rounded-2xl overflow-hidden border border-white/20 shadow-2xl relative">
+                            <Suspense fallback={<div className="flex h-full items-center justify-center text-cyan-400"><Loader className="w-10 h-10 animate-spin" /></div>}>
+                                <IndiaMap markers={mapMarkers} showUserLocation={true} height="100%" />
+                            </Suspense>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
-};
-
-export default ChatBot;
+}
