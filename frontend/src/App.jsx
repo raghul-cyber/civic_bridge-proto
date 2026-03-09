@@ -52,15 +52,15 @@ function App() {
                   {/* Public Route */}
                   <Route path="/login" element={<Login />} />
 
-                  {/* Protected Routes */}
-                  <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                  <Route path="/submit" element={<ProtectedRoute><Submit /></ProtectedRoute>} />
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/officer" element={<ProtectedRoute><OfficerPortal /></ProtectedRoute>} />
-                  <Route path="/live" element={<ProtectedRoute><LiveData /></ProtectedRoute>} />
+                  {/* Public Routes */}
+                  <Route path="/" element={<Home />} />
+                  <Route path="/submit" element={<Submit />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/officer" element={<OfficerPortal />} />
+                  <Route path="/live" element={<LiveData />} />
                   {/* Specific Feature Routes */}
-                  <Route path="/map" element={<ProtectedRoute><IndiaMap markers={[]} /></ProtectedRoute>} />
-                  <Route path="/chat" element={<ProtectedRoute><div>{/* Placeholder for ChatBot.jsx */} <Home /></div></ProtectedRoute>} />
+                  <Route path="/map" element={<IndiaMap markers={[]} />} />
+                  <Route path="/chat" element={<div>{/* Placeholder for ChatBot.jsx */} <Home /></div>} />
 
                   {/* Utility Routes */}
                   <Route path="*" element={<Navigate to="/404" replace />} />

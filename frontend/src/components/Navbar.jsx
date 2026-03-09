@@ -5,9 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown, Globe, LogIn } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage, INDIAN_LANGUAGES } from '../context/LanguageContext';
+import { useAuth } from '../hooks/useAuth';
 
 const Navbar = () => {
     const { language, setLanguage } = useLanguage();
+    const { token, logout } = useAuth();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isLangOpen, setIsLangOpen] = useState(false);
@@ -109,10 +111,23 @@ const Navbar = () => {
                         </AnimatePresence>
                     </div>
 
-                    <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--accent-cyan)] text-[var(--accent-cyan)] text-sm font-medium hover:bg-[var(--accent-cyan)] hover:text-black transition-all duration-300">
-                        <LogIn className="w-4 h-4" />
-                        <span>Login</span>
-                    </button>
+                    {token ? (
+                        <button
+                            onClick={logout}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#ef4444] text-[#ef4444] text-sm font-medium hover:bg-[#ef4444] hover:text-black transition-all duration-300"
+                        >
+                            <LogIn className="w-4 h-4" />
+                            <span>Logout</span>
+                        </button>
+                    ) : (
+                        <Link
+                            to="/login"
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--accent-cyan)] text-[var(--accent-cyan)] text-sm font-medium hover:bg-[var(--accent-cyan)] hover:text-black transition-all duration-300"
+                        >
+                            <LogIn className="w-4 h-4" />
+                            <span>Login</span>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Mobile Toggle */}
@@ -152,9 +167,15 @@ const Navbar = () => {
                                     <Globe className="w-5 h-5" />
                                     <span>{language.name}</span>
                                 </button>
-                                <button className="px-6 py-2 rounded-full border border-[var(--accent-cyan)] text-[var(--accent-cyan)] font-medium">
-                                    Login
-                                </button>
+                                {token ? (
+                                    <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="px-6 py-2 rounded-full border border-[#ef4444] text-[#ef4444] font-medium">
+                                        Logout
+                                    </button>
+                                ) : (
+                                    <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="px-6 py-2 rounded-full border border-[var(--accent-cyan)] text-[var(--accent-cyan)] font-medium">
+                                        Login
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </motion.div>
