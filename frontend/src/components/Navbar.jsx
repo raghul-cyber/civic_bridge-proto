@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown, Globe, LogIn } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useLanguage, LANGUAGES } from '../context/LanguageContext';
+import { useLanguage, INDIAN_LANGUAGES } from '../context/LanguageContext';
 
 const Navbar = () => {
     const { language, setLanguage } = useLanguage();
@@ -89,7 +89,7 @@ const Navbar = () => {
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                     className="absolute top-full mt-2 right-0 w-32 glass rounded-lg overflow-hidden py-1"
                                 >
-                                    {LANGUAGES.map((lang) => (
+                                    {INDIAN_LANGUAGES.map((lang) => (
                                         <button
                                             key={lang.code}
                                             onClick={() => {
