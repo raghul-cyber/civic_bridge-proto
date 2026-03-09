@@ -2,18 +2,37 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Globe, LogIn } from 'lucide-react';
+import { Menu, X, ChevronDown, Globe, LogIn, User, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage, INDIAN_LANGUAGES } from '../context/LanguageContext';
 import { useAuth } from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 
 const Navbar = () => {
     const { language, setLanguage } = useLanguage();
-    const { token, logout } = useAuth();
+    const { user, token, logout } = useAuth();
+    const { showToast } = useToast();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isLangOpen, setIsLangOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const location = useLocation();
+
+    useEffect(() => {
+        const handleLoginSuccess = (e) => {
+            showToast({ title: 'Login Successful', message: `Welcome back, ${e.detail}!`, type: 'success' });
+        };
+        const handleLoginError = (e) => {
+            showToast({ title: 'Login Failed', message: e.detail, type: 'error' });
+        };
+
+        window.addEventListener('login-success', handleLoginSuccess);
+        window.addEventListener('login-error', handleLoginError);
+        return () => {
+            window.removeEventListener('login-success', handleLoginSuccess);
+            window.removeEventListener('login-error', handleLoginError);
+        };
+    }, [showToast]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -112,13 +131,47 @@ const Navbar = () => {
                     </div>
 
                     {token ? (
-                        <button
-                            onClick={logout}
-                            className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#ef4444] text-[#ef4444] text-sm font-medium hover:bg-[#ef4444] hover:text-black transition-all duration-300"
-                        >
-                            <LogIn className="w-4 h-4" />
-                            <span>Logout</span>
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-white/10 hover:border-white/30 bg-white/5 transition-all duration-300"
+                            >
+                                {user?.picture ? (
+                                    <img src={user.picture} alt="Profile" className="w-6 h-6 rounded-full" />
+                                ) : (
+                                    <div className="w-6 h-6 rounded-full bg-[var(--accent-cyan)]/20 flex items-center justify-center">
+                                        <User className="w-4 h-4 text-[var(--accent-cyan)]" />
+                                    </div>
+                                )}
+                                <span className="text-sm font-medium text-white max-w-[100px] truncate">
+                                    {user?.name || 'My Account'}
+                                </span>
+                                <ChevronDown className={cn("w-3 h-3 text-gray-400 transition-transform", isProfileOpen && "rotate-180")} />
+                            </button>
+
+                            <AnimatePresence>
+                                {isProfileOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute top-full mt-2 right-0 w-48 glass rounded-xl overflow-hidden py-2 border border-white/10 shadow-2xl"
+                                    >
+                                        <div className="px-4 py-2 border-b border-white/5 mb-2">
+                                            <p className="text-xs text-gray-400">Signed in as</p>
+                                            <p className="text-sm font-medium text-white truncate">{user?.email}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => { logout(); setIsProfileOpen(false); }}
+                                            className="w-full text-left px-4 py-2 text-sm text-[#ef4444] hover:bg-white/5 transition-colors flex items-center gap-2 font-medium"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Sign out
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     ) : (
                         <Link
                             to="/login"

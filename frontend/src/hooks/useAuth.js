@@ -2,9 +2,16 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export function useAuth() {
-    const [user, setUser] = useState(null)
-    const [token, setToken] = useState(localStorage.getItem('cb_token'))
-    const navigate = useNavigate()
+    const getInitialUser = () => {
+        try {
+            const saved = localStorage.getItem('cb_user');
+            return saved ? JSON.parse(saved) : null;
+        } catch { return null; }
+    };
+
+    const [user, setUser] = useState(getInitialUser);
+    const [token, setToken] = useState(localStorage.getItem('cb_token'));
+    const navigate = useNavigate();
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
@@ -13,29 +20,34 @@ export function useAuth() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ credential: credentialResponse.credential })
-            })
+            });
 
             if (!res.ok) {
-                throw new Error('Authentication failed on the server')
+                throw new Error('Authentication failed on the server');
             }
 
-            const data = await res.json()
-            localStorage.setItem('cb_token', data.token)
-            setToken(data.token)
-            setUser(data.user)
-            navigate('/chat')  // redirect to main chat
+            const data = await res.json();
+            localStorage.setItem('cb_token', data.token);
+            localStorage.setItem('cb_user', JSON.stringify(data.user));
+            setToken(data.token);
+            setUser(data.user);
+
+            // Dispatch success event for toast notification
+            window.dispatchEvent(new CustomEvent('login-success', { detail: data.user.name }));
+            navigate('/chat');  // redirect to main chat
         } catch (error) {
-            console.error('Google Sign-In Error:', error)
-            // Provide user fallback or silent fail depending on UX
+            console.error('Google Sign-In Error:', error);
+            window.dispatchEvent(new CustomEvent('login-error', { detail: 'Google Sign-In Failed' }));
         }
     }
 
     const logout = () => {
-        localStorage.removeItem('cb_token')
-        setUser(null)
-        setToken(null)
-        navigate('/login')
+        localStorage.removeItem('cb_token');
+        localStorage.removeItem('cb_user');
+        setUser(null);
+        setToken(null);
+        navigate('/login');
     }
 
-    return { user, token, handleGoogleSuccess, logout }
+    return { user, token, handleGoogleSuccess, logout };
 }
